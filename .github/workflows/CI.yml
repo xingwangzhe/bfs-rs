@@ -358,17 +358,24 @@ jobs:
           node-version: 24
       - name: Install dependencies
         run: bun install
+      - name: create npm dirs
+        run: bun x napi create-npm-dirs
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
           path: artifacts
-      - name: Move artifacts to root
-        run: |
-          find artifacts -type f \( -name "*.node" -o -name "*.wasm" \) -exec cp {} . \;
+      - name: Move artifacts
+        run: bun run artifacts
       - name: List packages
-        run: ls -la *.node *.wasm 2>/dev/null || true
+        run: ls -R ./npm
         shell: bash
-      - name: Publish
+      - name: Publish platform packages
+        run: |
+          for dir in npm/*/; do
+            echo "Publishing $dir ..."
+            (cd "$dir" && npm publish --provenance --access public) || true
+          done
+      - name: Publish main package
         run: |
           if git log -1 --pretty=%B | grep "^[0-9]\+\.[0-9]\+\.[0-9]\+$";
           then
