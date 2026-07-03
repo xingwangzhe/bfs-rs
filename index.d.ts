@@ -3,6 +3,9 @@
 /** 从所有节点并行执行 BFS（全量） */
 export declare function bfsAll(adj: Array<number>, offsets: Array<number>, n: number): BfsBatchResult
 
+/** 从所有节点并行执行 BFS（全量），仅返回直方图 */
+export declare function bfsAllHistogram(adj: Array<number>, offsets: Array<number>, n: number): BfsHistogramBatchResult
+
 /**
  * 从多个源节点并行执行 BFS
  *
@@ -14,6 +17,9 @@ export declare function bfsAll(adj: Array<number>, offsets: Array<number>, n: nu
  */
 export declare function bfsBatch(adj: Array<number>, offsets: Array<number>, n: number, sources: Array<number>): BfsBatchResult
 
+/** 从多个源节点并行执行 BFS，仅返回距离直方图（节省内存） */
+export declare function bfsBatchHistogram(adj: Array<number>, offsets: Array<number>, n: number, sources: Array<number>): BfsHistogramBatchResult
+
 /** 批量 BFS 结果 */
 export interface BfsBatchResult {
   /** 每个源节点的 BFS 结果 */
@@ -22,8 +28,27 @@ export interface BfsBatchResult {
   processed: number
 }
 
+/** 批量直方图结果 */
+export interface BfsHistogramBatchResult {
+  /** 每个源节点的直方图结果 */
+  results: Array<BfsHistogramResult>
+  /** 成功处理的源节点数 */
+  processed: number
+}
+
+/** 仅直方图结果（不含完整距离数组，节省内存） */
+export interface BfsHistogramResult {
+  /** 距离直方图：histogram[d] = 距离为 d 的节点数（不含源节点自身） */
+  histogram: Array<number>
+  /** 最大有限距离 */
+  maxDistance: number
+}
+
 /** 从单个源节点执行 BFS，返回距离数组 */
 export declare function bfsOne(adj: Array<number>, offsets: Array<number>, n: number, source: number): BfsOneResult
+
+/** 从单个源节点执行 BFS，仅返回距离直方图（节省内存） */
+export declare function bfsOneHistogram(adj: Array<number>, offsets: Array<number>, n: number, source: number): BfsHistogramResult
 
 /** 单源 BFS 结果 */
 export interface BfsOneResult {
@@ -43,7 +68,6 @@ export interface BfsOneResult {
  */
 export declare function bfsPath(adj: Array<number>, offsets: Array<number>, n: number, source: number, target: number): BfsPathResult
 
-/** 最短路径结果 */
 export interface BfsPathResult {
   /** 从 source 到 target 的最短路径节点序列（含两端），不可达时为空数组 */
   path: Array<number>

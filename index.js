@@ -588,6 +588,9 @@ if (!nativeBinding) {
 
 module.exports = nativeBinding
 module.exports.bfsAll = nativeBinding.bfsAll
+module.exports.bfsAllHistogram = nativeBinding.bfsAllHistogram
 module.exports.bfsBatch = nativeBinding.bfsBatch
+module.exports.bfsBatchHistogram = nativeBinding.bfsBatchHistogram
 module.exports.bfsOne = nativeBinding.bfsOne
+module.exports.bfsOneHistogram = nativeBinding.bfsOneHistogram
 module.exports.bfsPath = nativeBinding.bfsPath

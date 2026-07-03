@@ -33,7 +33,99 @@ pub struct BfsBatchResult {
     pub processed: u32,
 }
 
-/// 最短路径结果
+/// 仅直方图结果（不含完整距离数组，节省内存）
+#[napi(object)]
+pub struct BfsHistogramResult {
+    /// 距离直方图：histogram[d] = 距离为 d 的节点数（不含源节点自身）
+    pub histogram: Vec<u32>,
+    /// 最大有限距离
+    pub max_distance: u32,
+}
+
+/// 批量直方图结果
+#[napi(object)]
+pub struct BfsHistogramBatchResult {
+    /// 每个源节点的直方图结果
+    pub results: Vec<BfsHistogramResult>,
+    /// 成功处理的源节点数
+    pub processed: u32,
+}
+
+/// 内部单源 BFS，仅返回直方图（不分配完整距离数组的副本）
+fn bfs_one_histogram_internal(adj: &[u32], offsets: &[u32], source: u32, n: usize) -> BfsHistogramResult {
+    let mut dist = vec![-1i32; n];
+
+    BFS_POOL.install(|| {
+        let mut curr = Frontier::with_threads(&BFS_POOL, Some(n));
+        let mut next = Frontier::with_threads(&BFS_POOL, Some(n));
+
+        dist[source as usize] = 0;
+        curr.push(source);
+
+        let mut max_dist = 0u32;
+        let mut current_dist = 1i32;
+        let mut histogram: Vec<u32> = Vec::new();
+
+        while !curr.is_empty() {
+            let mut level_count = 0u32;
+            for &u in curr.iter() {
+                let start = offsets[u as usize] as usize;
+                let end = offsets[(u + 1) as usize] as usize;
+                for &v in &adj[start..end] {
+                    let vi = v as usize;
+                    if dist[vi] == -1 {
+                        dist[vi] = current_dist;
+                        max_dist = current_dist as u32;
+                        level_count += 1;
+                        next.push(v);
+                    }
+                }
+            }
+            if level_count > 0 {
+                histogram.push(level_count);
+            }
+            std::mem::swap(&mut curr, &mut next);
+            next.clear();
+            current_dist += 1;
+        }
+
+        // dist 在此作用域结束后自动释放，不 clone
+        BfsHistogramResult {
+            max_distance: max_dist,
+            histogram,
+        }
+    })
+}
+
+/// 从单个源节点执行 BFS，仅返回距离直方图（节省内存）
+#[napi]
+pub fn bfs_one_histogram(adj: Vec<u32>, offsets: Vec<u32>, n: u32, source: u32) -> BfsHistogramResult {
+    bfs_one_histogram_internal(&adj, &offsets, source, n as usize)
+}
+
+/// 从多个源节点并行执行 BFS，仅返回距离直方图（节省内存）
+#[napi]
+pub fn bfs_batch_histogram(adj: Vec<u32>, offsets: Vec<u32>, n: u32, sources: Vec<u32>) -> BfsHistogramBatchResult {
+    let n_usize = n as usize;
+    let total = sources.len();
+
+    let results: Vec<BfsHistogramResult> = sources
+        .par_iter()
+        .map(|&src| bfs_one_histogram_internal(&adj, &offsets, src, n_usize))
+        .collect();
+
+    BfsHistogramBatchResult {
+        processed: total as u32,
+        results,
+    }
+}
+
+/// 从所有节点并行执行 BFS（全量），仅返回直方图
+#[napi]
+pub fn bfs_all_histogram(adj: Vec<u32>, offsets: Vec<u32>, n: u32) -> BfsHistogramBatchResult {
+    let sources: Vec<u32> = (0..n).collect();
+    bfs_batch_histogram(adj, offsets, n, sources)
+}
 #[napi(object)]
 pub struct BfsPathResult {
     /// 从 source 到 target 的最短路径节点序列（含两端），不可达时为空数组

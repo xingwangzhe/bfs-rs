@@ -1,6 +1,6 @@
 {
   "name": "@xingwangzhe/bfs-rs",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Rust BFS on compressed adjacency list with Rayon parallelism",
   "main": "index.js",
   "types": "index.d.ts",
