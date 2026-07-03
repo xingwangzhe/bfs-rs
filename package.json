@@ -1,0 +1,41 @@
+{
+  "name": "@xingwangzhe/bfs-rs",
+  "version": "0.1.1",
+  "description": "Rust BFS on compressed adjacency list with Rayon parallelism",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "license": "(MIT OR Apache-2.0)",
+  "author": "xingwangzhe",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xingwangzhe/bfs-rs.git"
+  },
+  "keywords": ["bfs", "graph", "rayon", "napi-rs", "rust"],
+  "files": [
+    "index.d.ts",
+    "index.js",
+    "bfs-rs.linux-x64-gnu.node"
+  ],
+  "napi": {
+    "binaryName": "bfs-rs",
+    "targets": [
+      "x86_64-unknown-linux-gnu"
+    ]
+  },
+  "engines": {
+    "node": ">= 18"
+  },
+  "scripts": {
+    "build": "napi build --platform --release",
+    "test": "node --test",
+    "lint": "oxlint",
+    "artifacts": "napi artifacts"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^3.2.0",
+    "@oxc-node/core": "^0.1.0",
+    "ava": "^8.0.0",
+    "oxlint": "^1.72.0",
+    "typescript": "^6.0.0"
+  }
+}
