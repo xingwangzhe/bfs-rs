@@ -113,10 +113,31 @@ const result = bfsAll(adj, offsets, n);
 
 ---
 
+### bfsPath(adj, offsets, n, source, target)
+
+计算两点之间的**最短路径**，BFS + 父节点回溯。找到目标节点后立即终止。
+
+```ts
+import { bfsPath } from '@xingwangzhe/bfs-rs';
+
+const r = bfsPath(adj, offsets, n, 0, 3);
+// r.path     → [0, 2, 3]   // 从 source 到 target 的节点序列
+// r.distance → 2           // 边的数量，-1 表示不可达
+```
+
+**返回值：** `BfsPathResult`
+
+| 字段     | 类型     | 说明                          |
+|----------|---------|-------------------------------|
+| path     | number[] | 最短路径节点序列（不可达时为空数组） |
+| distance | number   | 边的数量（-1 表示不可达）        |
+
+---
+
 ## 完整示例
 
 ```ts
-import { bfsOne, bfsBatch, bfsAll } from '@xingwangzhe/bfs-rs';
+import { bfsOne, bfsBatch, bfsAll, bfsPath } from '@xingwangzhe/bfs-rs';
 
 // 构建图：5 个节点的无向图
 // 0 -- 1 -- 2
@@ -140,8 +161,12 @@ r2.results.forEach((res, i) => {
   console.log(`源节点 ${[0, 4][i]}:`, res.distances);
 });
 
-// 3. 全源 BFS
-const r3 = bfsAll(adj, offsets, n);
+// 3. 最短路径
+const r4 = bfsPath(adj, offsets, n, 0, 4);
+console.log("路径 0→4:", r4.path);  // [0, 1, 2, 4] 或类似
+
+// 4. 全源 BFS
+const r5 = bfsAll(adj, offsets, n);
 console.log('全源结果数:', r3.processed);  // 5
 ```
 

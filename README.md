@@ -113,10 +113,31 @@ const result = bfsAll(adj, offsets, n);
 
 ---
 
+### bfsPath(adj, offsets, n, source, target)
+
+Find the **shortest path** between two nodes using BFS + parent backtracking. Stops early when the target is found.
+
+```ts
+import { bfsPath } from '@xingwangzhe/bfs-rs';
+
+const r = bfsPath(adj, offsets, n, 0, 3);
+// r.path     → [0, 2, 3]   // node sequence from source to target
+// r.distance → 2           // number of edges, -1 if unreachable
+```
+
+**Returns:** `BfsPathResult`
+
+| Field    | Type     | Description                                  |
+|----------|----------|----------------------------------------------|
+| path     | number[] | Shortest path node sequence (empty if unreachable) |
+| distance | number   | Number of edges (-1 if unreachable)          |
+
+---
+
 ## Full Example
 
 ```ts
-import { bfsOne, bfsBatch, bfsAll } from '@xingwangzhe/bfs-rs';
+import { bfsOne, bfsBatch, bfsAll, bfsPath } from '@xingwangzhe/bfs-rs';
 
 // Graph with 5 nodes (undirected)
 // 0 -- 1 -- 2
@@ -130,19 +151,23 @@ const n       = 5;
 
 // 1. Single-source BFS
 const r1 = bfsOne(adj, offsets, n, 0);
-console.log('From node 0:', r1.distances);
+console.log.'From node 0:', r1.distances);
 // [0, 1, 2, 1, 2]
 
 // 2. Batch BFS
 const r2 = bfsBatch(adj, offsets, n, [0, 4]);
-console.log('Batch count:', r2.processed);  // 2
+console.log.'Batch count:', r2.processed);  // 2
 r2.results.forEach((res, i) => {
-  console.log(`Source ${[0, 4][i]}:`, res.distances);
+  console.log.`Source ${[0, 4][i]}:`, res.distances);
 });
 
-// 3. All-pairs BFS
-const r3 = bfsAll(adj, offsets, n);
-console.log('All-pairs count:', r3.processed);  // 5
+// 3. Shortest path
+const r4 = bfsPath(adj, offsets, n, 0, 4);
+console.log."Path 0→4:", r4.path);  // [0, 1, 2, 4] or similar
+
+// 4. All-pairs BFS
+const r5 = bfsAll(adj, offsets, n);
+console.log.'All-pairs count:', r3.processed);  // 5
 ```
 
 ## Performance
