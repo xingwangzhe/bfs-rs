@@ -52,7 +52,12 @@ pub struct BfsHistogramBatchResult {
 }
 
 /// 内部单源 BFS，仅返回直方图（不分配完整距离数组的副本）
-fn bfs_one_histogram_internal(adj: &[u32], offsets: &[u32], source: u32, n: usize) -> BfsHistogramResult {
+fn bfs_one_histogram_internal(
+    adj: &[u32],
+    offsets: &[u32],
+    source: u32,
+    n: usize,
+) -> BfsHistogramResult {
     let mut dist = vec![-1i32; n];
 
     BFS_POOL.install(|| {
@@ -99,13 +104,23 @@ fn bfs_one_histogram_internal(adj: &[u32], offsets: &[u32], source: u32, n: usiz
 
 /// 从单个源节点执行 BFS，仅返回距离直方图（节省内存）
 #[napi]
-pub fn bfs_one_histogram(adj: Vec<u32>, offsets: Vec<u32>, n: u32, source: u32) -> BfsHistogramResult {
+pub fn bfs_one_histogram(
+    adj: Vec<u32>,
+    offsets: Vec<u32>,
+    n: u32,
+    source: u32,
+) -> BfsHistogramResult {
     bfs_one_histogram_internal(&adj, &offsets, source, n as usize)
 }
 
 /// 从多个源节点并行执行 BFS，仅返回距离直方图（节省内存）
 #[napi]
-pub fn bfs_batch_histogram(adj: Vec<u32>, offsets: Vec<u32>, n: u32, sources: Vec<u32>) -> BfsHistogramBatchResult {
+pub fn bfs_batch_histogram(
+    adj: Vec<u32>,
+    offsets: Vec<u32>,
+    n: u32,
+    sources: Vec<u32>,
+) -> BfsHistogramBatchResult {
     let n_usize = n as usize;
     let total = sources.len();
 
