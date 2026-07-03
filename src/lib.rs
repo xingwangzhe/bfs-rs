@@ -33,6 +33,15 @@ pub struct BfsBatchResult {
     pub processed: u32,
 }
 
+/// 最短路径结果
+#[napi(object)]
+pub struct BfsPathResult {
+    /// 从 source 到 target 的最短路径节点序列（含两端），不可达时为空数组
+    pub path: Vec<u32>,
+    /// 路径长度（边数），不可达时为 -1
+    pub distance: i32,
+}
+
 /// 内部单源 BFS，基于 parallel_frontier::Frontier 实现层级遍历
 fn bfs_one_internal(adj: &[u32], offsets: &[u32], source: u32, n: usize) -> BfsOneResult {
     let mut dist = vec![-1i32; n];
@@ -77,6 +86,83 @@ fn bfs_one_internal(adj: &[u32], offsets: &[u32], source: u32, n: usize) -> BfsO
             histogram,
         }
     })
+}
+
+/// 计算从 source 到 target 的最短路径（BFS + 父节点回溯）
+///
+/// 找到 target 时立即终止，不遍历全图。
+/// 不可达时 path 为空数组，distance 为 -1。
+#[napi]
+pub fn bfs_path(
+    adj: Vec<u32>,
+    offsets: Vec<u32>,
+    n: u32,
+    source: u32,
+    target: u32,
+) -> BfsPathResult {
+    let n_usize = n as usize;
+    let src = source as usize;
+    let tgt = target as usize;
+
+    if src == tgt {
+        return BfsPathResult {
+            path: vec![source],
+            distance: 0,
+        };
+    }
+
+    let mut parent = vec![-1i32; n_usize];
+    let mut found = false;
+
+    BFS_POOL.install(|| {
+        let mut curr = Frontier::with_threads(&BFS_POOL, Some(n_usize));
+        let mut next = Frontier::with_threads(&BFS_POOL, Some(n_usize));
+
+        parent[src] = src as i32; // 标记源节点已访问
+        curr.push(source);
+
+        'outer: while !curr.is_empty() {
+            for &u in curr.iter() {
+                let start = offsets[u as usize] as usize;
+                let end = offsets[(u + 1) as usize] as usize;
+                for &v in &adj[start..end] {
+                    let vi = v as usize;
+                    if parent[vi] == -1 {
+                        parent[vi] = u as i32;
+                        if vi == tgt {
+                            found = true;
+                            break 'outer;
+                        }
+                        next.push(v);
+                    }
+                }
+            }
+            std::mem::swap(&mut curr, &mut next);
+            next.clear();
+        }
+    });
+
+    if !found {
+        return BfsPathResult {
+            path: vec![],
+            distance: -1,
+        };
+    }
+
+    // 回溯构建路径
+    let mut path: Vec<u32> = Vec::new();
+    let mut cur = tgt as i32;
+    while cur != src as i32 {
+        path.push(cur as u32);
+        cur = parent[cur as usize];
+    }
+    path.push(source);
+    path.reverse();
+
+    BfsPathResult {
+        distance: (path.len() - 1) as i32,
+        path,
+    }
 }
 
 /// 从单个源节点执行 BFS，返回距离数组

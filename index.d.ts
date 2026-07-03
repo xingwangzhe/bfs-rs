@@ -34,3 +34,19 @@ export interface BfsOneResult {
   /** 距离直方图：histogram[d] = 距离为 d 的节点数（不含源节点自身） */
   histogram: Array<number>
 }
+
+/**
+ * 计算从 source 到 target 的最短路径（BFS + 父节点回溯）
+ *
+ * 找到 target 时立即终止，不遍历全图。
+ * 不可达时 path 为空数组，distance 为 -1。
+ */
+export declare function bfsPath(adj: Array<number>, offsets: Array<number>, n: number, source: number, target: number): BfsPathResult
+
+/** 最短路径结果 */
+export interface BfsPathResult {
+  /** 从 source 到 target 的最短路径节点序列（含两端），不可达时为空数组 */
+  path: Array<number>
+  /** 路径长度（边数），不可达时为 -1 */
+  distance: number
+}

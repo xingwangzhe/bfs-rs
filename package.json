@@ -1,6 +1,6 @@
 {
   "name": "@xingwangzhe/bfs-rs",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Rust BFS on compressed adjacency list with Rayon parallelism",
   "main": "index.js",
   "types": "index.d.ts",
@@ -27,12 +27,12 @@
     ]
   },
   "optionalDependencies": {
-    "@xingwangzhe/bfs-rs-linux-x64-gnu": "0.1.3",
-    "@xingwangzhe/bfs-rs-linux-x64-musl": "0.1.3",
-    "@xingwangzhe/bfs-rs-linux-arm64-gnu": "0.1.3",
-    "@xingwangzhe/bfs-rs-darwin-x64": "0.1.3",
-    "@xingwangzhe/bfs-rs-darwin-arm64": "0.1.3",
-    "@xingwangzhe/bfs-rs-win32-x64-msvc": "0.1.3"
+    "@xingwangzhe/bfs-rs-linux-x64-gnu": "0.1.4",
+    "@xingwangzhe/bfs-rs-linux-x64-musl": "0.1.4",
+    "@xingwangzhe/bfs-rs-linux-arm64-gnu": "0.1.4",
+    "@xingwangzhe/bfs-rs-darwin-x64": "0.1.4",
+    "@xingwangzhe/bfs-rs-darwin-arm64": "0.1.4",
+    "@xingwangzhe/bfs-rs-win32-x64-msvc": "0.1.4"
   },
   "engines": {
     "node": ">= 18"

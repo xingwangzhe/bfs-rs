@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { bfsOne, bfsBatch, bfsAll } from "./index.js";
+import { bfsOne, bfsBatch, bfsAll, bfsPath } from "./index.js";
 
 const adj = [1, 2, 0, 2, 0, 1, 3, 2];
 const offsets = [0, 2, 4, 7, 8];
@@ -37,4 +37,30 @@ test("single node graph", () => {
   const r = bfsOne([], [0, 0], 1, 0);
   expect(r.distances).toEqual([0]);
   expect(r.maxDistance).toBe(0);
+});
+
+// bfsPath tests
+test("bfsPath direct path", () => {
+  const r = bfsPath(adj, offsets, n, 0, 3);
+  expect(r.path).toEqual([0, 2, 3]);
+  expect(r.distance).toBe(2);
+});
+
+test("bfsPath same node", () => {
+  const r = bfsPath(adj, offsets, n, 2, 2);
+  expect(r.path).toEqual([2]);
+  expect(r.distance).toBe(0);
+});
+
+test("bfsPath adjacent", () => {
+  const r = bfsPath(adj, offsets, n, 0, 1);
+  expect(r.path).toEqual([0, 1]);
+  expect(r.distance).toBe(1);
+});
+
+test("bfsPath unreachable", () => {
+  // 2-node disconnected: 0, 1 no edges
+  const r = bfsPath([], [0, 0, 0], 2, 0, 1);
+  expect(r.path).toEqual([]);
+  expect(r.distance).toBe(-1);
 });
