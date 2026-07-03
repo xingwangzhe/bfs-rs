@@ -373,7 +373,7 @@ jobs:
         run: |
           for dir in npm/*/; do
             echo "Publishing $dir ..."
-            (cd "$dir" && npm publish --provenance --access public) || true
+            (cd "$dir" && npm publish --provenance --access public)
           done
       - name: Publish main package
         run: |
