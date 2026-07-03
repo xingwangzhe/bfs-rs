@@ -13,7 +13,8 @@
   "keywords": ["bfs", "graph", "rayon", "napi-rs", "rust"],
   "files": [
     "index.d.ts",
-    "index.js"
+    "index.js",
+    "bfs-rs.*.node"
   ],
   "napi": {
     "binaryName": "bfs-rs",
@@ -25,14 +26,6 @@
       "x86_64-unknown-linux-musl",
       "aarch64-unknown-linux-gnu"
     ]
-  },
-  "optionalDependencies": {
-    "@xingwangzhe/bfs-rs-linux-x64-gnu": "0.1.4",
-    "@xingwangzhe/bfs-rs-linux-x64-musl": "0.1.4",
-    "@xingwangzhe/bfs-rs-linux-arm64-gnu": "0.1.4",
-    "@xingwangzhe/bfs-rs-darwin-x64": "0.1.4",
-    "@xingwangzhe/bfs-rs-darwin-arm64": "0.1.4",
-    "@xingwangzhe/bfs-rs-win32-x64-msvc": "0.1.4"
   },
   "engines": {
     "node": ">= 18"
