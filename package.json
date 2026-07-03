@@ -14,12 +14,25 @@
   "files": [
     "index.d.ts",
     "index.js",
-    "bfs-rs.linux-x64-gnu.node"
+    "bfs-rs.*.node",
+    "bfs-rs.*.wasm"
   ],
   "napi": {
     "binaryName": "bfs-rs",
     "targets": [
-      "x86_64-unknown-linux-gnu"
+      "x86_64-apple-darwin",
+      "aarch64-apple-darwin",
+      "x86_64-pc-windows-msvc",
+      "i686-pc-windows-msvc",
+      "aarch64-pc-windows-msvc",
+      "x86_64-unknown-linux-gnu",
+      "x86_64-unknown-linux-musl",
+      "aarch64-unknown-linux-gnu",
+      "aarch64-unknown-linux-musl",
+      "armv7-unknown-linux-gnueabihf",
+      "aarch64-linux-android",
+      "armv7-linux-androideabi",
+      "wasm32-wasip1-threads"
     ]
   },
   "engines": {
