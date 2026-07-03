@@ -115,16 +115,11 @@ jobs:
       - name: Build
         run: ${{ matrix.settings.build }}
         shell: bash
-      - name: List built files
-        run: ls -la *.node *.wasm 2>/dev/null || true
-        shell: bash
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: bindings-${{ matrix.settings.target }}
-          path: |
-            ${{ env.APP_NAME }}.*.node
-            ${{ env.APP_NAME }}.*.wasm
+          path: ${{ env.APP_NAME }}.*.node
           if-no-files-found: error
   test-macOS-windows-binding:
     name: Test bindings on ${{ matrix.settings.target }} - node@${{ matrix.node }}
@@ -161,7 +156,7 @@ jobs:
           name: bindings-${{ matrix.settings.target }}
           path: .
       - name: List packages
-        run: ls -la *.node *.wasm 2>/dev/null; ls -la
+        run: ls -R .
         shell: bash
       - name: Test bindings
         run: node --test bfs.test.mjs
