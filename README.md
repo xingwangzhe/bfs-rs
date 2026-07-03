@@ -2,203 +2,136 @@
 
 # @xingwangzhe/bfs-rs
 
-High-performance BFS (Breadth-First Search) library powered by Rust + Rayon parallelism, using CSR (Compressed Sparse Row) format for large-scale graph shortest-path computation.
+Fast BFS (Breadth-First Search) for large-scale graphs, written in Rust with Rayon parallelism. Uses CSR (Compressed Sparse Row) adjacency format.
+
+- **16-core** parallel `bfsAllHistogram`: 57K nodes in **~3s**
+- **Single-core** auto-fallback: sequential path with zero Rayon overhead
+- **Histogram-only** API: no full distance arrays, O(histogram) memory per source
 
 ## Installation
 
 ```bash
 npm install @xingwangzhe/bfs-rs
-# or
-yarn add @xingwangzhe/bfs-rs
 ```
 
 ## Data Format
 
-This library uses the **CSR (Compressed Sparse Row)** format to represent graphs:
+Uses **CSR (Compressed Sparse Row)**:
 
 ```
-adj     = [1, 2, 0, 2, 0, 1, 3, 2]   // all neighbor node IDs flattened
-offsets = [0, 2, 4, 7, 8]            // start offset for each node (length = n + 1)
+adj     = [1, 2, 0, 2, 0, 1, 3, 2]   // all neighbor IDs flattened
+offsets = [0, 2, 4, 7, 8]            // node offset range (length = n + 1)
 ```
 
-The data above represents:
-
-| Node | Neighbors |
-|------|-----------|
-| 0    | 1, 2      |
-| 1    | 0, 2      |
-| 2    | 0, 1, 3   |
-| 3    | 2         |
-
-Elements in `adj` from `offsets[i]` to `offsets[i+1]` are the neighbors of node `i`.
+| Node | Neighbors             |
+|------|-----------------------|
+| 0    | adj[0..2] = [1, 2]    |
+| 1    | adj[2..4] = [0, 2]    |
+| 2    | adj[4..7] = [0, 1, 3] |
+| 3    | adj[7..8] = [2]       |
 
 ## API
 
-### bfsOne(adj, offsets, n, source)
+### Full Distance API — when you need per-node distances
 
-Run BFS from a **single source node**.
+#### bfsOne(adj, offsets, n, source)
+
+Single-source BFS, returns distances array.
 
 ```ts
 import { bfsOne } from '@xingwangzhe/bfs-rs';
-
-const adj     = [1, 2, 0, 2, 0, 1, 3, 2];
-const offsets = [0, 2, 4, 7, 8];
-const n       = 4;  // total nodes
-
-const result = bfsOne(adj, offsets, n, 0);
-// result.distances  → [0, 1, 1, 2]   // shortest distances from node 0
-// result.maxDistance → 2               // maximum finite distance
-// result.histogram   → [2, 1]          // 2 nodes at dist 1, 1 node at dist 2
+const r = bfsOne(adj, offsets, n, 0);
+// r.distances → [0, 1, 1, 2]
+// r.maxDistance → 2
+// r.histogram → [2, 1]
 ```
 
-**Parameters:**
-| Param   | Type     | Description                   |
-|---------|----------|-------------------------------|
-| adj     | number[] | Flattened adjacency array     |
-| offsets | number[] | Offset array, length = n + 1  |
-| n       | number   | Total number of nodes         |
-| source  | number   | Source node ID (0-based)      |
+#### bfsBatch(adj, offsets, n, sources)
 
-**Returns:** `BfsOneResult`
-| Field       | Type     | Description                              |
-|-------------|----------|------------------------------------------|
-| distances   | number[] | Shortest distance to each node, -1 = unreachable |
-| maxDistance | number   | Maximum distance among reachable nodes   |
-| histogram   | number[] | histogram[d-1] = nodes at distance d     |
-
----
-
-### bfsBatch(adj, offsets, n, sources)
-
-Run BFS from **multiple source nodes** in parallel (Rayon multi-threaded).
+Parallel BFS from multiple sources.
 
 ```ts
 import { bfsBatch } from '@xingwangzhe/bfs-rs';
-
-const sources = [0, 3];
-const result = bfsBatch(adj, offsets, n, sources);
-
-result.processed;  // 2 (number of sources processed)
-result.results;    // [BfsOneResult, BfsOneResult]
+const r = bfsBatch(adj, offsets, n, [0, 3]);
+// r.processed → 2, r.results → [BfsOneResult, BfsOneResult]
 ```
 
-**Parameters:**
-| Param   | Type     | Description                  |
-|---------|----------|------------------------------|
-| adj     | number[] | Flattened adjacency array    |
-| offsets | number[] | Offset array, length = n + 1 |
-| n       | number   | Total number of nodes        |
-| sources | number[] | Source node IDs              |
+#### bfsAll(adj, offsets, n)
 
-**Returns:** `BfsBatchResult`
-| Field     | Type           | Description                    |
-|-----------|----------------|--------------------------------|
-| results   | BfsOneResult[] | BFS result for each source     |
-| processed | number         | Number of sources successfully processed |
-
----
-
-### bfsAll(adj, offsets, n)
-
-Run BFS from **all nodes** in parallel (equivalent to `bfsBatch` with all nodes as sources).
+All-pairs BFS (every node as source).
 
 ```ts
 import { bfsAll } from '@xingwangzhe/bfs-rs';
-
-const result = bfsAll(adj, offsets, n);
-// computes all-pairs shortest paths, n nodes processed in parallel
+const r = bfsAll(adj, offsets, n);
+// r.results.length === n
 ```
 
-**Returns:** `BfsBatchResult`, where `results.length === n`.
+#### bfsPath(adj, offsets, n, source, target)
 
----
-
-### bfsPath(adj, offsets, n, source, target)
-
-Find the **shortest path** between two nodes using BFS + parent backtracking. Stops early when the target is found.
+Shortest path between two nodes. Stops early at target.
 
 ```ts
 import { bfsPath } from '@xingwangzhe/bfs-rs';
-
 const r = bfsPath(adj, offsets, n, 0, 3);
-// r.path     → [0, 2, 3]   // node sequence from source to target
-// r.distance → 2           // number of edges, -1 if unreachable
+// r.path → [0, 2, 3], r.distance → 2
 ```
 
-**Returns:** `BfsPathResult`
+### Histogram-Only API — memory-efficient for large graphs
 
-| Field    | Type     | Description                                  |
-|----------|----------|----------------------------------------------|
-| path     | number[] | Shortest path node sequence (empty if unreachable) |
-| distance | number   | Number of edges (-1 if unreachable)          |
+These return **only the distance histogram** per source (no full `distances` array), making them ideal for six-degree / diameter stats on graphs with 50K+ nodes.
 
----
+#### bfsOneHistogram / bfsBatchHistogram / bfsAllHistogram
+
+Same usage as above, but result type is `BfsHistogramResult`:
+
+```ts
+import { bfsAllHistogram } from '@xingwangzhe/bfs-rs';
+const r = bfsAllHistogram(adj, offsets, n);
+// r.results[i].histogram → [count_at_dist_1, count_at_dist_2, ...]
+// r.results[i].maxDistance → number
+```
+
+Memory per source: ~(diameter × 4) bytes instead of ~(n × 4) bytes.
+
+## Performance
+
+| Platform   | 57K nodes × 179K edges | Notes                     |
+|------------|----------------------|---------------------------|
+| 16-core    | **~3s**              | Rayon `par_iter` across 16 threads |
+| 1-core     | ~70s                 | auto-fallback to `iter` |
+
+All BFS functions use **dual-`Vec` swap** level traversal with zero allocation per level.
 
 ## Full Example
 
 ```ts
-import { bfsOne, bfsBatch, bfsAll, bfsPath } from '@xingwangzhe/bfs-rs';
+import { bfsOne, bfsBatch, bfsAll, bfsPath, bfsAllHistogram } from '@xingwangzhe/bfs-rs';
 
-// Graph with 5 nodes (undirected)
-// 0 -- 1 -- 2
-// |         |
-// 3 ------- 4
-//
-// CSR format:
+// Graph: 0--1--2, 0--3--4--2
 const adj     = [1, 3, 0, 2, 1, 4, 0, 4, 2, 3];
 const offsets = [0, 2, 4, 6, 8, 10];
 const n       = 5;
 
-// 1. Single-source BFS
+// Full distances
 const r1 = bfsOne(adj, offsets, n, 0);
-console.log.'From node 0:', r1.distances);
-// [0, 1, 2, 1, 2]
+console.log(r1.distances); // [0, 1, 2, 1, 2]
 
-// 2. Batch BFS
-const r2 = bfsBatch(adj, offsets, n, [0, 4]);
-console.log.'Batch count:', r2.processed);  // 2
-r2.results.forEach((res, i) => {
-  console.log.`Source ${[0, 4][i]}:`, res.distances);
-});
+// Shortest path
+const r2 = bfsPath(adj, offsets, n, 0, 4);
+console.log(r2.path); // [0, 1, 2, 4] or [0, 3, 4, 2]
 
-// 3. Shortest path
-const r4 = bfsPath(adj, offsets, n, 0, 4);
-console.log."Path 0→4:", r4.path);  // [0, 1, 2, 4] or similar
-
-// 4. All-pairs BFS
-const r5 = bfsAll(adj, offsets, n);
-console.log.'All-pairs count:', r3.processed);  // 5
-```
-
-## Performance
-
-- Written in **Rust**, compiled to native machine code
-- BFS queue powered by [`parallel_frontier`](https://crates.io/crates/parallel_frontier) — lock-free, cache-line-padded frontier
-- Batch/all-pairs BFS uses **Rayon** for parallel scheduling across CPU cores
-- Memory-efficient CSR format optimized for large graphs
-
-## Credits
-
-This package is built on top of [`parallel_frontier`](https://crates.io/crates/parallel_frontier) (Apache-2.0 OR LGPL-2.1-or-later), a high-performance concurrent queue designed for parallel BFS traversals.
-
-## Development
-
-### Requirements
-
-- Node.js >= 18
-- Rust stable toolchain
-- Yarn
-
-### Local Build
-
-```bash
-yarn install
-yarn build
-yarn test
+// Histogram-only (memory efficient)
+const r3 = bfsAllHistogram(adj, offsets, n);
+// Aggregate in JS:
+const degreeDist = {};
+for (const h of r3.results) {
+  for (let d = 0; d < h.histogram.length; d++) {
+    degreeDist[d + 1] = (degreeDist[d + 1] || 0) + h.histogram[d];
+  }
+}
+// degreeDist[1] = divide by 2 for undirected pair count
 ```
 
 ## License
 
-This project is dual-licensed under [MIT](https://opensource.org/licenses/MIT) OR [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0), at your option.
-
-Dependency [`parallel_frontier`](https://crates.io/crates/parallel_frontier) is used under the Apache-2.0 option of its license.
+MIT OR Apache-2.0

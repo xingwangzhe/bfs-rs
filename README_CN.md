@@ -2,203 +2,136 @@
 
 # @xingwangzhe/bfs-rs
 
-基于 Rust + Rayon 并行计算的高性能 BFS（广度优先搜索）库，使用 CSR（Compressed Sparse Row）压缩邻接表格式，适用于大规模图的最短路径计算。
+基于 Rust + Rayon 并行加速的大规模图 BFS，使用 CSR 压缩邻接表格式。
+
+- **16 核**并行 `bfsAllHistogram`：57K 节点全量约 **~3s**
+- **单核**自动降级为串行，零 Rayon 调度开销
+- **直方图 API**：不返回完整距离数组，每源节点仅 ~40 字节
 
 ## 安装
 
 ```bash
 npm install @xingwangzhe/bfs-rs
-# 或
-yarn add @xingwangzhe/bfs-rs
 ```
 
 ## 数据格式
 
-本库使用 **CSR（Compressed Sparse Row）** 格式表示图：
+使用 **CSR（Compressed Sparse Row）**：
 
 ```
-adj     = [1, 2, 0, 2, 0, 1, 3, 2]   // 所有邻居节点 ID 平铺
-offsets = [0, 2, 4, 7, 8]            // 每个节点的邻接起始位置（长度 = n + 1）
+adj     = [1, 2, 0, 2, 0, 1, 3, 2]   // 所有邻居 ID 平铺
+offsets = [0, 2, 4, 7, 8]            // 每节点起止偏移（长度 n+1）
 ```
 
-以上数据表示的图结构：
-
-| 节点 | 邻居 |
-|------|------|
-| 0    | 1, 2 |
-| 1    | 0, 2 |
-| 2    | 0, 1, 3 |
-| 3    | 2    |
-
-`offsets[i]` 到 `offsets[i+1]` 之间的 `adj` 元素即为节点 `i` 的所有邻居。
+| 节点 | 邻居                  |
+|------|----------------------|
+| 0    | adj[0..2] = [1, 2]    |
+| 1    | adj[2..4] = [0, 2]    |
+| 2    | adj[4..7] = [0, 1, 3] |
+| 3    | adj[7..8] = [2]       |
 
 ## API
 
-### bfsOne(adj, offsets, n, source)
+### 完整距离 API — 需要每个节点的距离值
 
-从**单个源节点**执行 BFS。
+#### bfsOne(adj, offsets, n, source)
+
+单源 BFS，返回距离数组。
 
 ```ts
 import { bfsOne } from '@xingwangzhe/bfs-rs';
-
-const adj     = [1, 2, 0, 2, 0, 1, 3, 2];
-const offsets = [0, 2, 4, 7, 8];
-const n       = 4;  // 总节点数
-
-const result = bfsOne(adj, offsets, n, 0);
-// result.distances  → [0, 1, 1, 2]   // 节点 0 到各节点的最短距离
-// result.maxDistance → 2               // 最大距离
-// result.histogram   → [2, 1]          // 距离1有2个节点, 距离2有1个节点
+const r = bfsOne(adj, offsets, n, 0);
+// r.distances → [0, 1, 1, 2]
+// r.maxDistance → 2
+// r.histogram → [2, 1]
 ```
 
-**参数：**
-| 参数    | 类型     | 说明                       |
-|---------|---------|----------------------------|
-| adj     | number[] | 平铺的邻接表数组             |
-| offsets | number[] | 偏移数组，长度为 n + 1       |
-| n       | number   | 总节点数                    |
-| source  | number   | 源节点 ID（从 0 开始）       |
+#### bfsBatch(adj, offsets, n, sources)
 
-**返回值：** `BfsOneResult`
-| 字段         | 类型     | 说明                          |
-|-------------|---------|-------------------------------|
-| distances   | number[] | 各节点到源的最短距离，-1 表示不可达 |
-| maxDistance | number   | 所有可达节点中的最大距离          |
-| histogram   | number[] | histogram[d-1] = 距离 d 的节点数  |
-
----
-
-### bfsBatch(adj, offsets, n, sources)
-
-从**多个源节点**并行执行 BFS（Rayon 多线程加速）。
+多源并行 BFS。
 
 ```ts
 import { bfsBatch } from '@xingwangzhe/bfs-rs';
-
-const sources = [0, 3];
-const result = bfsBatch(adj, offsets, n, sources);
-
-result.processed;  // 2（成功处理的源节点数）
-result.results;    // [BfsOneResult, BfsOneResult]
+const r = bfsBatch(adj, offsets, n, [0, 3]);
+// r.processed → 2, r.results → [BfsOneResult, BfsOneResult]
 ```
 
-**参数：**
-| 参数    | 类型     | 说明                  |
-|---------|---------|----------------------|
-| adj     | number[] | 平铺的邻接表数组        |
-| offsets | number[] | 偏移数组，长度为 n + 1  |
-| n       | number   | 总节点数               |
-| sources | number[] | 源节点 ID 数组         |
+#### bfsAll(adj, offsets, n)
 
-**返回值：** `BfsBatchResult`
-| 字段      | 类型           | 说明                |
-|----------|---------------|---------------------|
-| results  | BfsOneResult[] | 每个源节点的 BFS 结果  |
-| processed| number         | 成功处理的源节点数      |
-
----
-
-### bfsAll(adj, offsets, n)
-
-从**所有节点**并行执行 BFS（等价于 `bfsBatch` 以所有节点为源）。
+全源 BFS（每个节点作为源）。
 
 ```ts
 import { bfsAll } from '@xingwangzhe/bfs-rs';
-
-const result = bfsAll(adj, offsets, n);
-// 计算全源最短路径，并行处理所有 n 个节点
+const r = bfsAll(adj, offsets, n);
+// r.results.length === n
 ```
 
-**返回值：** `BfsBatchResult`，其中 `results` 长度等于 `n`。
+#### bfsPath(adj, offsets, n, source, target)
 
----
-
-### bfsPath(adj, offsets, n, source, target)
-
-计算两点之间的**最短路径**，BFS + 父节点回溯。找到目标节点后立即终止。
+两节点最短路径，找到目标立即终止。
 
 ```ts
 import { bfsPath } from '@xingwangzhe/bfs-rs';
-
 const r = bfsPath(adj, offsets, n, 0, 3);
-// r.path     → [0, 2, 3]   // 从 source 到 target 的节点序列
-// r.distance → 2           // 边的数量，-1 表示不可达
+// r.path → [0, 2, 3], r.distance → 2
 ```
 
-**返回值：** `BfsPathResult`
+### 直方图 API — 大图内存友好
 
-| 字段     | 类型     | 说明                          |
-|----------|---------|-------------------------------|
-| path     | number[] | 最短路径节点序列（不可达时为空数组） |
-| distance | number   | 边的数量（-1 表示不可达）        |
+只返回每源节点的**距离直方图**（不含完整距离数组），适用于六度分隔统计等仅需距离分布的 50K+ 节点大图场景。
 
----
+#### bfsOneHistogram / bfsBatchHistogram / bfsAllHistogram
+
+用法同上，返回类型为 `BfsHistogramResult`：
+
+```ts
+import { bfsAllHistogram } from '@xingwangzhe/bfs-rs';
+const r = bfsAllHistogram(adj, offsets, n);
+// r.results[i].histogram → [距离1的节点数, 距离2的节点数, ...]
+// r.results[i].maxDistance → 最大距离
+```
+
+内存：每源节点约 (直径 × 4) 字节，而非 (n × 4) 字节。
+
+## 性能
+
+| 平台       | 57K 节点 × 179K 边 | 说明                       |
+|------------|-------------------|---------------------------|
+| 16 核       | **~3s**           | Rayon `par_iter` 16 线程并行 |
+| 1 核        | ~70s               | `rayon::current_num_threads() < 2` 自动降级串行 |
+
+所有 BFS 函数内部使用**双 Vec 交换**层级遍历，零每层分配开销。
 
 ## 完整示例
 
 ```ts
-import { bfsOne, bfsBatch, bfsAll, bfsPath } from '@xingwangzhe/bfs-rs';
+import { bfsOne, bfsBatch, bfsAll, bfsPath, bfsAllHistogram } from '@xingwangzhe/bfs-rs';
 
-// 构建图：5 个节点的无向图
-// 0 -- 1 -- 2
-// |         |
-// 3 ------- 4
-//
-// CSR 格式：
+// 图结构: 0--1--2, 0--3--4--2
 const adj     = [1, 3, 0, 2, 1, 4, 0, 4, 2, 3];
 const offsets = [0, 2, 4, 6, 8, 10];
 const n       = 5;
 
-// 1. 单源 BFS
+// 完整距离
 const r1 = bfsOne(adj, offsets, n, 0);
-console.log('从节点 0 出发:', r1.distances);
-// [0, 1, 2, 1, 2]
+console.log(r1.distances); // [0, 1, 2, 1, 2]
 
-// 2. 批量 BFS
-const r2 = bfsBatch(adj, offsets, n, [0, 4]);
-console.log('批量结果数:', r2.processed);  // 2
-r2.results.forEach((res, i) => {
-  console.log(`源节点 ${[0, 4][i]}:`, res.distances);
-});
+// 最短路径
+const r2 = bfsPath(adj, offsets, n, 0, 4);
+console.log(r2.path); // [0, 1, 2, 4] 或 [0, 3, 4, 2]
 
-// 3. 最短路径
-const r4 = bfsPath(adj, offsets, n, 0, 4);
-console.log("路径 0→4:", r4.path);  // [0, 1, 2, 4] 或类似
-
-// 4. 全源 BFS
-const r5 = bfsAll(adj, offsets, n);
-console.log('全源结果数:', r3.processed);  // 5
-```
-
-## 性能
-
-- 底层使用 **Rust** 编写，编译为原生机器码
-- BFS 队列基于 [`parallel_frontier`](https://crates.io/crates/parallel_frontier) — 无锁、Cache-Line 对齐的前沿队列
-- 批量/全源 BFS 使用 **Rayon** 并行调度，充分利用多核 CPU
-- 内存布局紧凑，CSR 格式对大图友好
-
-## 致谢
-
-本包基于 [`parallel_frontier`](https://crates.io/crates/parallel_frontier)（Apache-2.0 OR LGPL-2.1-or-later）构建，这是一个专为并行 BFS 遍历设计的高性能并发队列。
-
-## 开发
-
-### 环境要求
-
-- Node.js >= 18
-- Rust 最新稳定版
-- Yarn
-
-### 本地构建
-
-```bash
-yarn install
-yarn build
-yarn test
+// 直方图模式（内存友好）
+const r3 = bfsAllHistogram(adj, offsets, n);
+// JS 侧聚合距离分布：
+const degreeDist = {};
+for (const h of r3.results) {
+  for (let d = 0; d < h.histogram.length; d++) {
+    degreeDist[d + 1] = (degreeDist[d + 1] || 0) + h.histogram[d];
+  }
+}
+// degreeDist[1] 除以 2 即为无向图节点对数量
 ```
 
 ## 协议
 
-本项目采用双协议授权：[MIT](https://opensource.org/licenses/MIT) 或 [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0)，任选其一。
-
-依赖 [`parallel_frontier`](https://crates.io/crates/parallel_frontier) 以其 Apache-2.0 选项使用。
+MIT OR Apache-2.0
