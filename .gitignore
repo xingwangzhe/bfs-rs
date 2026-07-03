@@ -118,11 +118,11 @@ dist
 
 /target
 
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/sdks
-!.yarn/versions
+# napi-rs generated native binaries (built by CI)
+*.node
+*.wasm
+bfs-rs.wasi*.js
+wasi-worker*.mjs
+
+# npm artifacts (platform sub-packages)
 /npm
