@@ -9,6 +9,8 @@ test("bfsOne from node 0", () => {
   const r = bfsOne(adj, offsets, n, 0);
   expect(r.distances).toEqual([0, 1, 1, 2]);
   expect(r.maxDistance).toBe(2);
+  // histogram: distance 1 has 2 nodes (1,2), distance 2 has 1 node (3)
+  expect(r.histogram).toEqual([2, 1]);
 });
 
 test("bfsOne unreachable node", () => {

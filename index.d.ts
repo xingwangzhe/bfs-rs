@@ -31,4 +31,6 @@ export interface BfsOneResult {
   distances: Array<number>
   /** 最大有限距离 */
   maxDistance: number
+  /** 距离直方图：histogram[d] = 距离为 d 的节点数（不含源节点自身） */
+  histogram: Array<number>
 }

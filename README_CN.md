@@ -48,6 +48,7 @@ const n       = 4;  // 总节点数
 const result = bfsOne(adj, offsets, n, 0);
 // result.distances  → [0, 1, 1, 2]   // 节点 0 到各节点的最短距离
 // result.maxDistance → 2               // 最大距离
+// result.histogram   → [2, 1]          // 距离1有2个节点, 距离2有1个节点
 ```
 
 **参数：**
@@ -63,6 +64,7 @@ const result = bfsOne(adj, offsets, n, 0);
 |-------------|---------|-------------------------------|
 | distances   | number[] | 各节点到源的最短距离，-1 表示不可达 |
 | maxDistance | number   | 所有可达节点中的最大距离          |
+| histogram   | number[] | histogram[d-1] = 距离 d 的节点数  |
 
 ---
 

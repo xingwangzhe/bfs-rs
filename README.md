@@ -48,6 +48,7 @@ const n       = 4;  // total nodes
 const result = bfsOne(adj, offsets, n, 0);
 // result.distances  → [0, 1, 1, 2]   // shortest distances from node 0
 // result.maxDistance → 2               // maximum finite distance
+// result.histogram   → [2, 1]          // 2 nodes at dist 1, 1 node at dist 2
 ```
 
 **Parameters:**
@@ -63,6 +64,7 @@ const result = bfsOne(adj, offsets, n, 0);
 |-------------|----------|------------------------------------------|
 | distances   | number[] | Shortest distance to each node, -1 = unreachable |
 | maxDistance | number   | Maximum distance among reachable nodes   |
+| histogram   | number[] | histogram[d-1] = nodes at distance d     |
 
 ---
 

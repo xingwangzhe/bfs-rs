@@ -20,6 +20,8 @@ pub struct BfsOneResult {
     pub distances: Vec<i32>,
     /// 最大有限距离
     pub max_distance: u32,
+    /// 距离直方图：histogram[d] = 距离为 d 的节点数（不含源节点自身）
+    pub histogram: Vec<u32>,
 }
 
 /// 批量 BFS 结果
@@ -44,8 +46,10 @@ fn bfs_one_internal(adj: &[u32], offsets: &[u32], source: u32, n: usize) -> BfsO
 
         let mut max_dist = 0u32;
         let mut current_dist = 1i32;
+        let mut histogram: Vec<u32> = Vec::new(); // histogram[d] 在循环中动态增长
 
         while !curr.is_empty() {
+            let mut level_count = 0u32;
             for &u in curr.iter() {
                 let start = offsets[u as usize] as usize;
                 let end = offsets[(u + 1) as usize] as usize;
@@ -54,9 +58,13 @@ fn bfs_one_internal(adj: &[u32], offsets: &[u32], source: u32, n: usize) -> BfsO
                     if dist[vi] == -1 {
                         dist[vi] = current_dist;
                         max_dist = current_dist as u32;
+                        level_count += 1;
                         next.push(v);
                     }
                 }
+            }
+            if level_count > 0 {
+                histogram.push(level_count);
             }
             std::mem::swap(&mut curr, &mut next);
             next.clear();
@@ -66,6 +74,7 @@ fn bfs_one_internal(adj: &[u32], offsets: &[u32], source: u32, n: usize) -> BfsO
         BfsOneResult {
             distances: dist.clone(),
             max_distance: max_dist,
+            histogram,
         }
     })
 }
