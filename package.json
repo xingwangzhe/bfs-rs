@@ -39,7 +39,7 @@
   },
   "scripts": {
     "build": "napi build --platform --release",
-    "test": "node --test",
+    "test": "node --test bfs.test.mjs",
     "lint": "oxlint",
     "artifacts": "napi artifacts"
   },
