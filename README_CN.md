@@ -134,4 +134,4 @@ for (const h of r3.results) {
 
 ## 协议
 
-MIT OR Apache-2.0
+MIT

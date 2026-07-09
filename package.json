@@ -1,10 +1,10 @@
 {
   "name": "@xingwangzhe/bfs-rs",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Rust BFS on compressed adjacency list with Rayon parallelism",
   "main": "index.js",
   "types": "index.d.ts",
-  "license": "(MIT OR Apache-2.0)",
+  "license": "MIT",
   "author": "xingwangzhe",
   "repository": {
     "type": "git",

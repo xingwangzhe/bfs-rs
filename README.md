@@ -134,4 +134,4 @@ for (const h of r3.results) {
 
 ## License
 
-MIT OR Apache-2.0
+MIT

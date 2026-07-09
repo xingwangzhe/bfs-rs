@@ -9,7 +9,6 @@ dependencies = [
  "napi",
  "napi-build",
  "napi-derive",
- "parallel_frontier",
  "rayon",
  "serde",
  "serde_json",
@@ -245,15 +244,6 @@ name = "nohash-hasher"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
-
-[[package]]
-name = "parallel_frontier"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c2ee8a95dca3bc39f7b8b65c00e1a33e615199fc6d21de5364190dd5b3d429f"
-dependencies = [
- "rayon",
-]
 
 [[package]]
 name = "pin-project-lite"
