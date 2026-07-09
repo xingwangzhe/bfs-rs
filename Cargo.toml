@@ -3,7 +3,7 @@
 authors = ["xingwangzhe"]
 edition = "2021"
 name = "bfs-rs"
-version = "0.1.7"
+version = "0.1.8"
 description = "Rust BFS on compressed adjacency list with Rayon parallelism"
 license = "MIT"
 

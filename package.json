@@ -1,6 +1,6 @@
 {
   "name": "@xingwangzhe/bfs-rs",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Rust BFS on compressed adjacency list with Rayon parallelism",
   "main": "index.js",
   "types": "index.d.ts",
@@ -41,6 +41,6 @@
     "@oxc-node/core": "^0.1.0",
     "ava": "^8.0.0",
     "oxlint": "^1.72.0",
-    "typescript": "^6.0.0"
+    "typescript": "^7.0.2"
   }
 }
