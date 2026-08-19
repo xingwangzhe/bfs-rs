@@ -2,7 +2,7 @@
 
 # @xingwangzhe/bfs-rs
 
-Fast BFS (Breadth-First Search) for large-scale graphs, written in Rust with Rayon parallelism. Uses CSR (Compressed Sparse Row) adjacency format.
+Fast, exact BFS (Breadth-First Search) for large-scale graphs, written in Rust with Rayon parallelism. Uses CSR plus a cached transpose, epoch-stamped visitation, bitset frontiers, and direction-optimising push/pull traversal.
 
 - **16-core** parallel `bfsAllHistogram`: 57K nodes in **~3s**
 - **Single-core** auto-fallback: sequential path with zero Rayon overhead
@@ -93,6 +93,21 @@ const r = bfsAllHistogram(adj, offsets, n);
 
 Memory per source: ~(diameter × 4) bytes instead of ~(n × 4) bytes.
 
+### Prepared typed-array graph
+
+For repeated queries on the same graph, build the transpose and reusable traversal buffers once:
+
+```ts
+import { createBfsGraph } from '@xingwangzhe/bfs-rs';
+
+const graph = createBfsGraph(new Uint32Array(adj), new Uint32Array(offsets), n);
+const one = graph.one(0);
+const all = graph.allHistogram();
+const merged = graph.mergedHistogram();
+```
+
+The prepared API keeps every result exact. Existing array-based functions remain available for compatibility.
+
 ## Performance
 
 | Platform   | 57K nodes × 179K edges | Notes                     |
@@ -100,7 +115,7 @@ Memory per source: ~(diameter × 4) bytes instead of ~(n × 4) bytes.
 | 16-core    | **~3s**              | Rayon `par_iter` across 16 threads |
 | 1-core     | ~70s                 | auto-fallback to `iter` |
 
-All BFS functions use **dual-`Vec` swap** level traversal with zero allocation per level.
+The traversal switches between top-down push and bottom-up pull when the frontier becomes broad. Visitation stamps avoid clearing an `n`-element distance array for histogram-only calls, and merged histograms use worker-local counters before reduction.
 
 ## Full Example
 

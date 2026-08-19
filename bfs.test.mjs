@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { bfsOne, bfsBatch, bfsAll, bfsPath } from "./index.js";
+import { bfsOne, bfsBatch, bfsAll, bfsPath, createBfsGraph } from "./index.js";
 import { createRequire } from "node:module"; const require = createRequire(import.meta.url); const { bfsOneHistogram, bfsBatchHistogram, bfsAllHistogram } = require("./index.js");
 
 const adj = [1, 2, 0, 2, 0, 1, 3, 2];
@@ -57,4 +57,39 @@ test("bfsBatchHistogram parallel histogram batch", () => {
 test("bfsAllHistogram from all nodes", () => {
   const r = bfsAllHistogram(adj, offsets, n);
   assert.equal(r.processed, 4);
+});
+
+test("prepared Uint32Array graph keeps exact results", () => {
+  const graph = createBfsGraph(new Uint32Array(adj), new Uint32Array(offsets), n);
+  assert.deepEqual(graph.one(0).distances, [0, 1, 1, 2]);
+  assert.deepEqual(graph.oneHistogram(0).histogram, [2, 1]);
+  assert.deepEqual(graph.path(0, 3).path, [0, 2, 3]);
+  assert.equal(graph.all().processed, n);
+});
+
+test("direction switching remains exact on a broad frontier", () => {
+  const nodes = 128;
+  const a = [];
+  const o = [0];
+  for (let u = 0; u < nodes; u++) {
+    for (let v = 0; v < nodes; v++) {
+      if (u !== v && ((u * 17 + v * 13) % 19) < 3) a.push(v);
+    }
+    o.push(a.length);
+  }
+  const result = bfsOne(a, o, nodes, 0);
+  const dist = Array(nodes).fill(-1);
+  const queue = [0];
+  dist[0] = 0;
+  for (let head = 0; head < queue.length; head++) {
+    const u = queue[head];
+    for (let i = o[u]; i < o[u + 1]; i++) {
+      const v = a[i];
+      if (dist[v] === -1) {
+        dist[v] = dist[u] + 1;
+        queue.push(v);
+      }
+    }
+  }
+  assert.deepEqual(result.distances, dist);
 });

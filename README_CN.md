@@ -2,7 +2,7 @@
 
 # @xingwangzhe/bfs-rs
 
-基于 Rust + Rayon 并行加速的大规模图 BFS，使用 CSR 压缩邻接表格式。
+基于 Rust + Rayon 并行加速的大规模**精确 BFS**，使用 CSR 与转置邻接表、epoch 访问标记、位图 frontier，以及动态 push/pull 方向优化。
 
 - **16 核**并行 `bfsAllHistogram`：57K 节点全量约 **~3s**
 - **单核**自动降级为串行，零 Rayon 调度开销
@@ -93,6 +93,21 @@ const r = bfsAllHistogram(adj, offsets, n);
 
 内存：每源节点约 (直径 × 4) 字节，而非 (n × 4) 字节。
 
+### Prepared typed-array 图
+
+同一张图需要重复查询时，建议只构建一次转置图和可复用遍历缓冲区：
+
+```ts
+import { createBfsGraph } from '@xingwangzhe/bfs-rs';
+
+const graph = createBfsGraph(new Uint32Array(adj), new Uint32Array(offsets), n);
+const one = graph.one(0);
+const all = graph.allHistogram();
+const merged = graph.mergedHistogram();
+```
+
+Prepared API 的所有结果仍然精确；原有普通数组 API 保持兼容。
+
 ## 性能
 
 | 平台       | 57K 节点 × 179K 边 | 说明                       |
@@ -100,7 +115,7 @@ const r = bfsAllHistogram(adj, offsets, n);
 | 16 核       | **~3s**           | Rayon `par_iter` 16 线程并行 |
 | 1 核        | ~70s               | `rayon::current_num_threads() < 2` 自动降级串行 |
 
-所有 BFS 函数内部使用**双 Vec 交换**层级遍历，零每层分配开销。
+遍历会在 frontier 较小时使用 top-down push，在 frontier 变宽时切换到 bottom-up pull。直方图路径使用 epoch 标记避免每个 source 清空 n 长度数组，合并直方图使用 worker-local 计数后再归并。
 
 ## 完整示例
 
