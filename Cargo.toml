@@ -3,7 +3,7 @@
 authors = ["xingwangzhe"]
 edition = "2021"
 name = "bfs-rs"
-version = "0.2.0"
+version = "0.2.1"
 description = "Rust BFS on compressed adjacency list with Rayon parallelism"
 license = "MIT"
 
@@ -11,7 +11,7 @@ license = "MIT"
 crate-type = ["cdylib"]
 
 [dependencies]
-napi = "3.12.1"
+napi = "3.12.2"
 napi-derive = "3.6.3"
 rayon = "1"
 serde = { version = "1", features = ["derive"] }
