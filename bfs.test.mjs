@@ -93,3 +93,53 @@ test("direction switching remains exact on a broad frontier", () => {
   }
   assert.deepEqual(result.distances, dist);
 });
+
+function referenceDistances(adjacency, rowOffsets, nodeCount, source) {
+  const distances = Array(nodeCount).fill(-1);
+  if (source < 0 || source >= nodeCount) return distances;
+  const queue = [source];
+  distances[source] = 0;
+  for (let head = 0; head < queue.length; head++) {
+    const u = queue[head];
+    for (let i = rowOffsets[u]; i < rowOffsets[u + 1]; i++) {
+      const v = adjacency[i];
+      if (distances[v] === -1) {
+        distances[v] = distances[u] + 1;
+        queue.push(v);
+      }
+    }
+  }
+  return distances;
+}
+
+test("distances match a simple reference across sparse, dense, skewed, and duplicate-edge graphs", () => {
+  const cases = [
+    { name: "empty", n: 0, edges: [] },
+    { name: "sparse", n: 37, edges: Array.from({ length: 36 }, (_, i) => [i, i + 1]) },
+    { name: "dense", n: 24, edges: Array.from({ length: 24 * 23 }, (_, i) => [Math.floor(i / 23), (Math.floor(i / 23) + 1 + (i % 23)) % 24]) },
+    { name: "skewed", n: 41, edges: Array.from({ length: 40 }, (_, i) => i === 0 ? [0, 1] : [1, i + 1]) },
+    { name: "duplicates", n: 8, edges: [[0, 1], [0, 1], [1, 2], [1, 2], [4, 5]] },
+  ];
+
+  for (const { name, n: nodeCount, edges } of cases) {
+    const adjacency = Array.from({ length: nodeCount }, () => []);
+    for (const [u, v] of edges) adjacency[u].push(v);
+    const flat = adjacency.flat();
+    const rowOffsets = [0];
+    for (const row of adjacency) rowOffsets.push(rowOffsets.at(-1) + row.length);
+    for (let source = 0; source < nodeCount; source++) {
+      const expected = referenceDistances(flat, rowOffsets, nodeCount, source);
+      assert.deepEqual(bfsOne(flat, rowOffsets, nodeCount, source).distances, expected, `${name}, source ${source}`);
+    }
+    assert.equal(bfsAll(flat, rowOffsets, nodeCount).processed, nodeCount, name);
+  }
+});
+
+test("path and histogram handle isolated vertices and invalid sources", () => {
+  assert.deepEqual(bfsOne([], [0, 0, 0], 2, 1).distances, [-1, 0]);
+  assert.deepEqual(bfsOne([], [0, 0, 0], 2, 4).distances, [-1, -1]);
+  assert.deepEqual(bfsPath([], [0, 0, 0], 2, 1, 0), { path: [], distance: -1 });
+  const histogram = bfsOneHistogram([], [0, 0, 0], 2, 1);
+  assert.deepEqual(histogram.histogram, []);
+  assert.equal(histogram.maxDistance, 0);
+});

@@ -4,13 +4,23 @@ import { bfsAllHistogram, createBfsGraph } from "./index.js";
 const n = Number(process.env.BFS_BENCH_N ?? 2048);
 const degree = Number(process.env.BFS_BENCH_DEGREE ?? 8);
 const repetitions = Number(process.env.BFS_BENCH_REPS ?? 3);
+const shape = process.env.BFS_BENCH_SHAPE ?? "sparse";
 
-function buildGraph(nodeCount, averageDegree) {
+function buildGraph(nodeCount, averageDegree, graphShape) {
   const adjacency = Array.from({ length: nodeCount }, () => []);
   for (let u = 0; u < nodeCount; u++) {
-    adjacency[u].push((u + 1) % nodeCount);
-    for (let j = 1; j < averageDegree; j++) {
-      adjacency[u].push((u * 1103515245 + j * 12345) % nodeCount);
+    if (graphShape === "path") {
+      if (u + 1 < nodeCount) adjacency[u].push(u + 1);
+    } else if (graphShape === "skewed") {
+      if (u > 0) adjacency[u].push(0);
+      for (let j = 1; j < averageDegree; j++) adjacency[u].push((u * 1103515245 + j * 12345) % nodeCount);
+    } else if (graphShape === "dense") {
+      for (let v = 0; v < nodeCount; v++) if (u !== v) adjacency[u].push(v);
+    } else {
+      if (nodeCount > 0) adjacency[u].push((u + 1) % nodeCount);
+      for (let j = 1; j < averageDegree; j++) {
+        adjacency[u].push((u * 1103515245 + j * 12345) % nodeCount);
+      }
     }
   }
   const adj = new Uint32Array(adjacency.flat());
@@ -19,7 +29,7 @@ function buildGraph(nodeCount, averageDegree) {
   return { adj, offsets };
 }
 
-const graphData = buildGraph(n, degree);
+const graphData = buildGraph(n, degree, shape);
 const preparedStart = performance.now();
 const graph = createBfsGraph(graphData.adj, graphData.offsets, n);
 const preparedMs = performance.now() - preparedStart;
@@ -40,4 +50,4 @@ const results = [
   measure("prepared.allHistogram", () => graph.allHistogram()),
   measure("compat.allHistogram", () => bfsAllHistogram(Array.from(graphData.adj), Array.from(graphData.offsets), n)),
 ];
-console.log(JSON.stringify({ package: "bfs-rs", n, degree, edges: graphData.adj.length, preparedMs, results }, null, 2));
+console.log(JSON.stringify({ package: "bfs-rs", n, degree, shape, edges: graphData.adj.length, preparedMs, results }, null, 2));
