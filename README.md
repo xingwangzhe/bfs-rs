@@ -24,7 +24,7 @@ offsets = [0, 2, 4, 7, 8]            // node offset range (length = n + 1)
 ```
 
 | Node | Neighbors             |
-|------|-----------------------|
+| ---- | --------------------- |
 | 0    | adj[0..2] = [1, 2]    |
 | 1    | adj[2..4] = [0, 2]    |
 | 2    | adj[4..7] = [0, 1, 3] |
@@ -39,7 +39,7 @@ offsets = [0, 2, 4, 7, 8]            // node offset range (length = n + 1)
 Single-source BFS, returns distances array.
 
 ```ts
-import { bfsOne } from '@xingwangzhe/bfs-rs';
+import { bfsOne } from "@xingwangzhe/bfs-rs";
 const r = bfsOne(adj, offsets, n, 0);
 // r.distances → [0, 1, 1, 2]
 // r.maxDistance → 2
@@ -51,7 +51,7 @@ const r = bfsOne(adj, offsets, n, 0);
 Parallel BFS from multiple sources.
 
 ```ts
-import { bfsBatch } from '@xingwangzhe/bfs-rs';
+import { bfsBatch } from "@xingwangzhe/bfs-rs";
 const r = bfsBatch(adj, offsets, n, [0, 3]);
 // r.processed → 2, r.results → [BfsOneResult, BfsOneResult]
 ```
@@ -61,7 +61,7 @@ const r = bfsBatch(adj, offsets, n, [0, 3]);
 All-pairs BFS (every node as source).
 
 ```ts
-import { bfsAll } from '@xingwangzhe/bfs-rs';
+import { bfsAll } from "@xingwangzhe/bfs-rs";
 const r = bfsAll(adj, offsets, n);
 // r.results.length === n
 ```
@@ -71,7 +71,7 @@ const r = bfsAll(adj, offsets, n);
 Shortest path between two nodes. Stops early at target.
 
 ```ts
-import { bfsPath } from '@xingwangzhe/bfs-rs';
+import { bfsPath } from "@xingwangzhe/bfs-rs";
 const r = bfsPath(adj, offsets, n, 0, 3);
 // r.path → [0, 2, 3], r.distance → 2
 ```
@@ -85,7 +85,7 @@ These return **only the distance histogram** per source (no full `distances` arr
 Same usage as above, but result type is `BfsHistogramResult`:
 
 ```ts
-import { bfsAllHistogram } from '@xingwangzhe/bfs-rs';
+import { bfsAllHistogram } from "@xingwangzhe/bfs-rs";
 const r = bfsAllHistogram(adj, offsets, n);
 // r.results[i].histogram → [count_at_dist_1, count_at_dist_2, ...]
 // r.results[i].maxDistance → number
@@ -98,7 +98,7 @@ Memory per source: ~(diameter × 4) bytes instead of ~(n × 4) bytes.
 For repeated queries on the same graph, build the transpose and reusable traversal buffers once:
 
 ```ts
-import { createBfsGraph } from '@xingwangzhe/bfs-rs';
+import { createBfsGraph } from "@xingwangzhe/bfs-rs";
 
 const graph = createBfsGraph(new Uint32Array(adj), new Uint32Array(offsets), n);
 const one = graph.one(0);
@@ -110,22 +110,22 @@ The prepared API keeps every result exact. Existing array-based functions remain
 
 ## Performance
 
-| Platform   | 57K nodes × 179K edges | Notes                     |
-|------------|----------------------|---------------------------|
-| 16-core    | **~3s**              | Rayon `par_iter` across 16 threads |
-| 1-core     | ~70s                 | auto-fallback to `iter` |
+| Platform | 57K nodes × 179K edges | Notes                              |
+| -------- | ---------------------- | ---------------------------------- |
+| 16-core  | **~3s**                | Rayon `par_iter` across 16 threads |
+| 1-core   | ~70s                   | auto-fallback to `iter`            |
 
 The traversal switches between top-down push and bottom-up pull when the frontier becomes broad. Visitation stamps avoid clearing an `n`-element distance array for histogram-only calls, and merged histograms use worker-local counters before reduction.
 
 ## Full Example
 
 ```ts
-import { bfsOne, bfsBatch, bfsAll, bfsPath, bfsAllHistogram } from '@xingwangzhe/bfs-rs';
+import { bfsOne, bfsBatch, bfsAll, bfsPath, bfsAllHistogram } from "@xingwangzhe/bfs-rs";
 
 // Graph: 0--1--2, 0--3--4--2
-const adj     = [1, 3, 0, 2, 1, 4, 0, 4, 2, 3];
+const adj = [1, 3, 0, 2, 1, 4, 0, 4, 2, 3];
 const offsets = [0, 2, 4, 6, 8, 10];
-const n       = 5;
+const n = 5;
 
 // Full distances
 const r1 = bfsOne(adj, offsets, n, 0);
@@ -150,3 +150,7 @@ for (const h of r3.results) {
 ## License
 
 MIT
+
+## Runtime-focused release builds
+
+Native CI artifacts use full LTO, one code-generation unit, and O3, while preserving the existing CPU instruction baseline. CI trains a profile-guided optimization (PGO) candidate using representative graph workloads and publishes it only when the runtime comparison passes; otherwise it publishes the unprofiled release. `bun run build:pgo` produces the optimized addon; `bun run benchmark:pgo` compares it with an unprofiled release. Install `llvm-tools-preview` with the same Rust toolchain first. Details and measurement limits: [scripts/PERFORMANCE.md](scripts/PERFORMANCE.md).

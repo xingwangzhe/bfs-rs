@@ -24,7 +24,7 @@ offsets = [0, 2, 4, 7, 8]            // 每节点起止偏移（长度 n+1）
 ```
 
 | 节点 | 邻居                  |
-|------|----------------------|
+| ---- | --------------------- |
 | 0    | adj[0..2] = [1, 2]    |
 | 1    | adj[2..4] = [0, 2]    |
 | 2    | adj[4..7] = [0, 1, 3] |
@@ -39,7 +39,7 @@ offsets = [0, 2, 4, 7, 8]            // 每节点起止偏移（长度 n+1）
 单源 BFS，返回距离数组。
 
 ```ts
-import { bfsOne } from '@xingwangzhe/bfs-rs';
+import { bfsOne } from "@xingwangzhe/bfs-rs";
 const r = bfsOne(adj, offsets, n, 0);
 // r.distances → [0, 1, 1, 2]
 // r.maxDistance → 2
@@ -51,7 +51,7 @@ const r = bfsOne(adj, offsets, n, 0);
 多源并行 BFS。
 
 ```ts
-import { bfsBatch } from '@xingwangzhe/bfs-rs';
+import { bfsBatch } from "@xingwangzhe/bfs-rs";
 const r = bfsBatch(adj, offsets, n, [0, 3]);
 // r.processed → 2, r.results → [BfsOneResult, BfsOneResult]
 ```
@@ -61,7 +61,7 @@ const r = bfsBatch(adj, offsets, n, [0, 3]);
 全源 BFS（每个节点作为源）。
 
 ```ts
-import { bfsAll } from '@xingwangzhe/bfs-rs';
+import { bfsAll } from "@xingwangzhe/bfs-rs";
 const r = bfsAll(adj, offsets, n);
 // r.results.length === n
 ```
@@ -71,7 +71,7 @@ const r = bfsAll(adj, offsets, n);
 两节点最短路径，找到目标立即终止。
 
 ```ts
-import { bfsPath } from '@xingwangzhe/bfs-rs';
+import { bfsPath } from "@xingwangzhe/bfs-rs";
 const r = bfsPath(adj, offsets, n, 0, 3);
 // r.path → [0, 2, 3], r.distance → 2
 ```
@@ -85,7 +85,7 @@ const r = bfsPath(adj, offsets, n, 0, 3);
 用法同上，返回类型为 `BfsHistogramResult`：
 
 ```ts
-import { bfsAllHistogram } from '@xingwangzhe/bfs-rs';
+import { bfsAllHistogram } from "@xingwangzhe/bfs-rs";
 const r = bfsAllHistogram(adj, offsets, n);
 // r.results[i].histogram → [距离1的节点数, 距离2的节点数, ...]
 // r.results[i].maxDistance → 最大距离
@@ -98,7 +98,7 @@ const r = bfsAllHistogram(adj, offsets, n);
 同一张图需要重复查询时，建议只构建一次转置图和可复用遍历缓冲区：
 
 ```ts
-import { createBfsGraph } from '@xingwangzhe/bfs-rs';
+import { createBfsGraph } from "@xingwangzhe/bfs-rs";
 
 const graph = createBfsGraph(new Uint32Array(adj), new Uint32Array(offsets), n);
 const one = graph.one(0);
@@ -110,22 +110,22 @@ Prepared API 的所有结果仍然精确；原有普通数组 API 保持兼容�
 
 ## 性能
 
-| 平台       | 57K 节点 × 179K 边 | 说明                       |
-|------------|-------------------|---------------------------|
-| 16 核       | **~3s**           | Rayon `par_iter` 16 线程并行 |
-| 1 核        | ~70s               | `rayon::current_num_threads() < 2` 自动降级串行 |
+| 平台  | 57K 节点 × 179K 边 | 说明                                            |
+| ----- | ------------------ | ----------------------------------------------- |
+| 16 核 | **~3s**            | Rayon `par_iter` 16 线程并行                    |
+| 1 核  | ~70s               | `rayon::current_num_threads() < 2` 自动降级串行 |
 
 遍历会在 frontier 较小时使用 top-down push，在 frontier 变宽时切换到 bottom-up pull。直方图路径使用 epoch 标记避免每个 source 清空 n 长度数组，合并直方图使用 worker-local 计数后再归并。
 
 ## 完整示例
 
 ```ts
-import { bfsOne, bfsBatch, bfsAll, bfsPath, bfsAllHistogram } from '@xingwangzhe/bfs-rs';
+import { bfsOne, bfsBatch, bfsAll, bfsPath, bfsAllHistogram } from "@xingwangzhe/bfs-rs";
 
 // 图结构: 0--1--2, 0--3--4--2
-const adj     = [1, 3, 0, 2, 1, 4, 0, 4, 2, 3];
+const adj = [1, 3, 0, 2, 1, 4, 0, 4, 2, 3];
 const offsets = [0, 2, 4, 6, 8, 10];
-const n       = 5;
+const n = 5;
 
 // 完整距离
 const r1 = bfsOne(adj, offsets, n, 0);
@@ -150,3 +150,7 @@ for (const h of r3.results) {
 ## 协议
 
 MIT
+
+## Runtime-focused release builds
+
+Native CI artifacts use full LTO, one code-generation unit, and O3, while preserving the existing CPU instruction baseline. CI trains a profile-guided optimization (PGO) candidate using representative graph workloads and publishes it only when the runtime comparison passes; otherwise it publishes the unprofiled release. `bun run build:pgo` produces the optimized addon; `bun run benchmark:pgo` compares it with an unprofiled release. Install `llvm-tools-preview` with the same Rust toolchain first. Details and measurement limits: [scripts/PERFORMANCE.md](scripts/PERFORMANCE.md).

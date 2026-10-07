@@ -21,6 +21,8 @@ serde_json = "1.0.151"
 napi-build = "2.5.0"
 
 [profile.release]
-lto = true
-strip = "symbols"
+opt-level = 3
+lto = "fat"
 codegen-units = 1
+incremental = false
+strip = "symbols"
