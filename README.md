@@ -110,12 +110,21 @@ The prepared API keeps every result exact. Existing array-based functions remain
 
 ## Performance
 
-| Platform | 57K nodes × 179K edges | Notes                              |
-| -------- | ---------------------- | ---------------------------------- |
-| 16-core  | **~3s**                | Rayon `par_iter` across 16 threads |
-| 1-core   | ~70s                   | auto-fallback to `iter`            |
+Single-source traversal switches between top-down push and bottom-up pull when
+the frontier becomes broad. Visitation stamps avoid clearing an `n`-element
+distance array for histogram-only calls; sparse levels do not build bitmaps.
 
-The traversal switches between top-down push and bottom-up pull when the frontier becomes broad. Visitation stamps avoid clearing an `n`-element distance array for histogram-only calls, and merged histograms use worker-local counters before reduction.
+Merged histograms share adjacency visits across 64 exact source traversals and
+parallelize independent batches with Rayon. Verified undirected graphs can also
+collapse equal neighbor sets into weighted vertices while preserving all ordered
+pair counts. Small graphs and graphs with maximum outgoing degree at most two
+use independent BFSs. The merged histogram retains at least 128 bins and grows
+when a shortest path exceeds 128 edges.
+
+Runtime depends on graph structure and CPU topology. See
+[performance methodology and reproducible consumer-fixture benchmarks](scripts/PERFORMANCE.md)
+for algorithm details, fallbacks, source references, memory measurement, and PGO
+selection. No host-specific CPU instruction flags are needed.
 
 ## Full Example
 

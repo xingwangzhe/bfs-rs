@@ -65,6 +65,11 @@ for (const shape of ["sparse", "dense", "skewed", "path"]) {
     },
     20,
   );
+  if (shape === "sparse") {
+    await measure("directed.mergedHistogram", () => {
+      sink += graph.mergedHistogram().maxDistance;
+    });
+  }
   if (training) {
     graph.allHistogram();
     graph.mergedHistogram();
@@ -73,6 +78,32 @@ for (const shape of ["sparse", "dense", "skewed", "path"]) {
     native.bfsOne(Array.from(adj), Array.from(offsets), n, 0);
     native.bfsBatchHistogram(Array.from(adj), Array.from(offsets), n, sources);
   }
+}
+// Public-link graphs contain many undirected leaves sharing a small set of
+// popular parents. Exercise the exact weighted quotient as well as the
+// directed traversal above, with distinct training and holdout sizes/seeds.
+{
+  const n = training ? 2048 : 3072;
+  const core = Math.floor(n / 3);
+  const rows = Array.from({ length: n }, () => new Set());
+  const edge = (u, v) => {
+    rows[u].add(v);
+    rows[v].add(u);
+  };
+  for (let u = 0; u < core; u++) {
+    edge(u, (u + 1) % core);
+    edge(u, (u * 17 + (training ? 11 : 23)) % core);
+  }
+  for (let u = core; u < n; u++) {
+    edge(u, u % 3 === 0 ? 0 : (u * 31 + (training ? 7 : 19)) % core);
+  }
+  const offsets = new Uint32Array(n + 1);
+  for (let u = 0; u < n; u++) offsets[u + 1] = offsets[u] + rows[u].size;
+  const adj = new Uint32Array(rows.flatMap((row) => [...row]));
+  const graph = native.createBfsGraph(adj, offsets, n);
+  await measure("blogLike.mergedHistogram", () => {
+    sink += graph.mergedHistogram().maxDistance;
+  });
 }
 if (!Number.isFinite(sink)) throw new Error("Non-finite workload output");
 console.log(JSON.stringify(results));

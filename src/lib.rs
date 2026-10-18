@@ -4,7 +4,7 @@ use napi::bindgen_prelude::Uint32Array;
 use napi::{Error, Result, Status};
 use napi_derive::napi;
 use rayon::prelude::*;
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 #[napi(object)]
 pub struct BfsOneResult {
@@ -52,7 +52,7 @@ struct Graph {
 }
 
 impl Graph {
-    fn new(adj: Vec<u32>, offsets: Vec<u32>, n: usize) -> Result<Self> {
+    fn new(mut adj: Vec<u32>, offsets: Vec<u32>, n: usize) -> Result<Self> {
         if offsets.len() != n.saturating_add(1) {
             return Err(Error::new(
                 Status::InvalidArg,
@@ -71,6 +71,10 @@ impl Graph {
                 "adjacency contains an invalid vertex",
             ));
         }
+        // CSR may use a prefix of the provided adjacency storage. The reverse
+        // graph must use that same prefix, rather than inventing incoming arcs
+        // from the unused tail.
+        adj.truncate(offsets[n] as usize);
 
         let mut rev_offsets = vec![0u32; n + 1];
         for &v in &adj {
@@ -106,7 +110,6 @@ struct Scratch {
     frontier: Vec<u32>,
     next: Vec<u32>,
     frontier_bits: Vec<u64>,
-    next_bits: Vec<u64>,
     epoch: u32,
 }
 
@@ -119,16 +122,14 @@ impl Scratch {
         let words = n.div_ceil(64);
         if self.frontier_bits.len() != words {
             self.frontier_bits.resize(words, 0);
-            self.next_bits.resize(words, 0);
         }
         self.frontier.clear();
         self.next.clear();
-        self.epoch = self.epoch.wrapping_add(1).max(1);
-    }
-
-    fn clear_bits(&mut self) {
-        self.frontier_bits.fill(0);
-        self.next_bits.fill(0);
+        self.epoch = self.epoch.wrapping_add(1);
+        if self.epoch == 0 {
+            self.stamp.fill(0);
+            self.epoch = 1;
+        }
     }
 }
 
@@ -163,7 +164,6 @@ fn run_bfs(
 ) -> (Vec<i32>, Vec<u32>, u32) {
     let n = graph.n;
     scratch.prepare(n);
-    scratch.clear_bits();
     let epoch = scratch.epoch;
     let source_i = source as usize;
     if source_i >= n {
@@ -184,23 +184,22 @@ fn run_bfs(
         scratch.dist[source_i] = 0;
     }
     scratch.frontier.push(source);
-    set_bit(&mut scratch.frontier_bits, source);
 
     let mut histogram = Vec::new();
     let mut depth = 0u32;
     let mut visited = 1usize;
+    let mut frontier_edges = (graph.offsets[source_i + 1] - graph.offsets[source_i]) as usize;
 
     while !scratch.frontier.is_empty() {
-        let frontier_edges = scratch
-            .frontier
-            .iter()
-            .map(|&u| graph.offsets[u as usize + 1] as usize - graph.offsets[u as usize] as usize)
-            .sum();
         scratch.next.clear();
-        scratch.next_bits.fill(0);
         let use_pull = should_pull(frontier_edges, scratch.frontier.len(), n - visited, n);
+        let mut next_edges = 0usize;
 
         if use_pull {
+            scratch.frontier_bits.fill(0);
+            for &u in &scratch.frontier {
+                set_bit(&mut scratch.frontier_bits, u);
+            }
             for v in 0..n as u32 {
                 if scratch.stamp[v as usize] == epoch {
                     continue;
@@ -217,7 +216,8 @@ fn run_bfs(
                         scratch.dist[v as usize] = depth as i32 + 1;
                     }
                     scratch.next.push(v);
-                    set_bit(&mut scratch.next_bits, v);
+                    next_edges +=
+                        (graph.offsets[v as usize + 1] - graph.offsets[v as usize]) as usize;
                 }
             }
         } else {
@@ -231,7 +231,8 @@ fn run_bfs(
                             scratch.dist[v as usize] = depth as i32 + 1;
                         }
                         scratch.next.push(v);
-                        set_bit(&mut scratch.next_bits, v);
+                        next_edges +=
+                            (graph.offsets[v as usize + 1] - graph.offsets[v as usize]) as usize;
                     }
                 }
             }
@@ -243,8 +244,8 @@ fn run_bfs(
         visited += scratch.next.len();
         histogram.push(scratch.next.len() as u32);
         depth += 1;
+        frontier_edges = next_edges;
         std::mem::swap(&mut scratch.frontier, &mut scratch.next);
-        std::mem::swap(&mut scratch.frontier_bits, &mut scratch.next_bits);
     }
 
     let distances = if want_distances {
@@ -353,17 +354,16 @@ fn batch_histogram_internal(graph: &Graph, sources: &[u32]) -> BfsHistogramBatch
     }
 }
 
-fn merged_histogram_internal(graph: &Graph) -> MergedHistogram {
+fn merged_histogram_independent(graph: &Graph) -> MergedHistogram {
     let (bins, max_distance) = (0..graph.n as u32)
         .into_par_iter()
         .fold(
             || (vec![0u64; 128], 0u32),
             |(mut bins, max_distance), source| {
                 let result = bfs_histogram_internal(graph, source);
+                bins.resize(bins.len().max(result.histogram.len()), 0);
                 for (distance, &count) in result.histogram.iter().enumerate() {
-                    if distance < bins.len() {
-                        bins[distance] += count as u64;
-                    }
+                    bins[distance] += count as u64;
                 }
                 (bins, max_distance.max(result.max_distance))
             },
@@ -371,12 +371,315 @@ fn merged_histogram_internal(graph: &Graph) -> MergedHistogram {
         .reduce(
             || (vec![0u64; 128], 0u32),
             |(mut left, left_max), (right, right_max)| {
+                left.resize(left.len().max(right.len()), 0);
                 for (l, r) in left.iter_mut().zip(right) {
                     *l += r;
                 }
                 (left, left_max.max(right_max))
             },
         );
+    MergedHistogram {
+        histogram: bins.into_iter().map(|v| v as u32).collect(),
+        max_distance,
+    }
+}
+
+/// Each bit represents an independent source, not a union of their distances.
+/// Level-synchronous propagation therefore computes the exact directed distance
+/// of every source/vertex pair while sharing adjacency scans across 64 searches.
+/// See Then et al., "The More the Merrier: Efficient Multi-Source Graph Traversal".
+struct MultiScratch {
+    seen: Vec<u64>,
+    current: Vec<u64>,
+    next: Vec<u64>,
+    frontier: Vec<u32>,
+    next_frontier: Vec<u32>,
+}
+
+impl MultiScratch {
+    fn new(n: usize) -> Self {
+        Self {
+            seen: vec![0; n],
+            current: vec![0; n],
+            next: vec![0; n],
+            frontier: Vec::with_capacity(n),
+            next_frontier: Vec::with_capacity(n),
+        }
+    }
+
+    fn run_dispatch<const WEIGHTED: bool>(
+        &mut self,
+        graph: &Graph,
+        sources: &[u32],
+        weights: &[u32],
+        bins: &mut Vec<u64>,
+    ) -> u32 {
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        if std::is_x86_feature_detected!("popcnt") {
+            // SAFETY: runtime detection preserves the generic x86 CPU baseline.
+            return unsafe { self.run_popcnt::<WEIGHTED>(graph, sources, weights, bins) };
+        }
+        self.run::<WEIGHTED>(graph, sources, weights, bins)
+    }
+
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    #[target_feature(enable = "popcnt")]
+    unsafe fn run_popcnt<const WEIGHTED: bool>(
+        &mut self,
+        graph: &Graph,
+        sources: &[u32],
+        weights: &[u32],
+        bins: &mut Vec<u64>,
+    ) -> u32 {
+        self.run::<WEIGHTED>(graph, sources, weights, bins)
+    }
+
+    #[inline(always)]
+    fn run<const WEIGHTED: bool>(
+        &mut self,
+        graph: &Graph,
+        sources: &[u32],
+        weights: &[u32],
+        bins: &mut Vec<u64>,
+    ) -> u32 {
+        self.seen.fill(0);
+        self.current.fill(0);
+        self.next.fill(0);
+        self.frontier.clear();
+        self.next_frontier.clear();
+        for (lane, &source) in sources.iter().enumerate() {
+            let source = source as usize;
+            let bit = 1u64 << lane;
+            self.seen[source] = bit;
+            self.current[source] = bit;
+            self.frontier.push(source as u32);
+        }
+        let mut depth = 0usize;
+        let active_mask = u64::MAX >> (64 - sources.len());
+        while !self.frontier.is_empty() {
+            let mut count = 0u64;
+            if self.frontier.len() > graph.n / 8 {
+                for (v, row) in graph.rev_offsets.windows(2).enumerate() {
+                    let missing = active_mask & !self.seen[v];
+                    if missing == 0 {
+                        continue;
+                    }
+                    let begin = row[0] as usize;
+                    let end = row[1] as usize;
+                    let mut reachable = 0u64;
+                    for &u in &graph.rev_adj[begin..end] {
+                        reachable |= self.current[u as usize];
+                        if reachable & missing == missing {
+                            break;
+                        }
+                    }
+                    let fresh = reachable & missing;
+                    if fresh != 0 {
+                        self.next_frontier.push(v as u32);
+                        self.seen[v] |= fresh;
+                        self.next[v] = fresh;
+                        let pairs = fresh.count_ones() as u64;
+                        count += if WEIGHTED {
+                            pairs * weights[v] as u64
+                        } else {
+                            pairs
+                        };
+                    }
+                }
+                for &u in &self.frontier {
+                    self.current[u as usize] = 0;
+                }
+            } else {
+                for &u in &self.frontier {
+                    let bits = self.current[u as usize];
+                    self.current[u as usize] = 0;
+                    let begin = graph.offsets[u as usize] as usize;
+                    let end = graph.offsets[u as usize + 1] as usize;
+                    for &v in &graph.adj[begin..end] {
+                        let v = v as usize;
+                        let fresh = bits & !self.seen[v];
+                        if fresh != 0 {
+                            if self.next[v] == 0 {
+                                self.next_frontier.push(v as u32);
+                            }
+                            self.seen[v] |= fresh;
+                            self.next[v] |= fresh;
+                            let pairs = fresh.count_ones() as u64;
+                            count += if WEIGHTED {
+                                pairs * weights[v] as u64
+                            } else {
+                                pairs
+                            };
+                        }
+                    }
+                }
+            }
+            if count == 0 {
+                break;
+            }
+            if depth == bins.len() {
+                bins.push(0);
+            }
+            bins[depth] += if WEIGHTED {
+                count * weights[sources[0] as usize] as u64
+            } else {
+                count
+            };
+            depth += 1;
+            std::mem::swap(&mut self.current, &mut self.next);
+            std::mem::swap(&mut self.frontier, &mut self.next_frontier);
+            self.next_frontier.clear();
+        }
+        depth as u32
+    }
+}
+
+fn merged_histogram_internal(graph: &Graph) -> MergedHistogram {
+    // Long paths/cycles offer little overlap between simultaneous frontiers.
+    // Independent searches avoid the extra lane bookkeeping for this case.
+    if graph.n < 64 || graph.offsets.windows(2).all(|row| row[1] - row[0] <= 2) {
+        return merged_histogram_independent(graph);
+    }
+    if let Some((quotient, weights, internal_pairs)) = twin_quotient(graph) {
+        return merged_histogram_weighted(&quotient, &weights, internal_pairs);
+    }
+    merged_histogram_multi(graph)
+}
+
+fn merged_histogram_multi(graph: &Graph) -> MergedHistogram {
+    let (bins, max_distance) = (0..graph.n.div_ceil(64))
+        .into_par_iter()
+        .fold(
+            || (MultiScratch::new(graph.n), vec![0u64; 128], 0u32),
+            |(mut scratch, mut bins, max_distance), batch| {
+                let sources: Vec<u32> = (batch * 64..((batch + 1) * 64).min(graph.n))
+                    .map(|source| source as u32)
+                    .collect();
+                let depth = scratch.run_dispatch::<false>(graph, &sources, &[], &mut bins);
+                (scratch, bins, max_distance.max(depth))
+            },
+        )
+        .map(|(_, bins, max_distance)| (bins, max_distance))
+        .reduce(
+            || (vec![0u64; 128], 0u32),
+            |(mut left, left_max), (right, right_max)| {
+                left.resize(left.len().max(right.len()), 0);
+                for (l, r) in left.iter_mut().zip(right) {
+                    *l += r;
+                }
+                (left, left_max.max(right_max))
+            },
+        );
+    MergedHistogram {
+        histogram: bins.into_iter().map(|v| v as u32).collect(),
+        max_distance,
+    }
+}
+
+/// Equal neighbor sets can be represented by one weighted vertex in an
+/// undirected graph. Distances between distinct classes are unchanged. Pairs
+/// inside a class have distance two (or one when the class has internal arcs).
+/// Isolated twins remain unreachable from each other. Directed graphs must not
+/// use this reduction: equal outgoing rows alone do not imply symmetry.
+fn twin_quotient(graph: &Graph) -> Option<(Graph, Vec<u32>, [u64; 2])> {
+    let mut rows = Vec::with_capacity(graph.n);
+    for u in 0..graph.n {
+        let mut row = graph.adj[graph.offsets[u] as usize..graph.offsets[u + 1] as usize].to_vec();
+        row.sort_unstable();
+        let reverse =
+            &graph.rev_adj[graph.rev_offsets[u] as usize..graph.rev_offsets[u + 1] as usize];
+        // The transpose is already sorted by the original source vertex.
+        if row != reverse {
+            return None;
+        }
+        row.dedup();
+        rows.push(row);
+    }
+    let mut classes: HashMap<&[u32], u32> = HashMap::with_capacity(graph.n);
+    let mut mapping = Vec::with_capacity(graph.n);
+    let mut representatives = Vec::new();
+    let mut weights = Vec::new();
+    for (u, row) in rows.iter().enumerate() {
+        let next_class = weights.len() as u32;
+        let class = *classes.entry(row).or_insert_with(|| {
+            representatives.push(u);
+            weights.push(0u32);
+            next_class
+        });
+        mapping.push(class);
+        weights[class as usize] += 1;
+    }
+    // Building a quotient has fixed costs; require a meaningful reduction.
+    if weights.len() * 10 > graph.n * 9 {
+        return None;
+    }
+    let mut adj = Vec::new();
+    let mut offsets = vec![0u32];
+    let mut internal_pairs = [0u64; 2];
+    for (class, &u) in representatives.iter().enumerate() {
+        let mut row: Vec<u32> = rows[u].iter().map(|&v| mapping[v as usize]).collect();
+        row.sort_unstable();
+        row.dedup();
+        let weight = weights[class] as u64;
+        let internal_distance = if row.binary_search(&(class as u32)).is_ok() {
+            1
+        } else {
+            2
+        };
+        if !row.is_empty() {
+            internal_pairs[internal_distance - 1] += weight * (weight - 1);
+        }
+        adj.extend(row);
+        offsets.push(adj.len() as u32);
+    }
+    Some((
+        Graph::new(adj, offsets, weights.len()).expect("valid quotient CSR"),
+        weights,
+        internal_pairs,
+    ))
+}
+
+fn merged_histogram_weighted(
+    graph: &Graph,
+    weights: &[u32],
+    internal_pairs: [u64; 2],
+) -> MergedHistogram {
+    // Equal source weights make each fresh lane count a single popcount plus
+    // a multiplication, rather than iterating over every source bit.
+    let mut groups: BTreeMap<u32, Vec<u32>> = BTreeMap::new();
+    for (source, &weight) in weights.iter().enumerate() {
+        groups.entry(weight).or_default().push(source as u32);
+    }
+    let batches: Vec<&[u32]> = groups
+        .values()
+        .flat_map(|sources| sources.chunks(64))
+        .collect();
+    let (mut bins, mut max_distance) = batches
+        .into_par_iter()
+        .fold(
+            || (MultiScratch::new(graph.n), vec![0u64; 128], 0u32),
+            |(mut scratch, mut bins, max_distance), sources| {
+                let depth = scratch.run_dispatch::<true>(graph, sources, weights, &mut bins);
+                (scratch, bins, max_distance.max(depth))
+            },
+        )
+        .map(|(_, bins, max_distance)| (bins, max_distance))
+        .reduce(
+            || (vec![0u64; 128], 0u32),
+            |(mut left, left_max), (right, right_max)| {
+                left.resize(left.len().max(right.len()), 0);
+                for (l, r) in left.iter_mut().zip(right) {
+                    *l += r;
+                }
+                (left, left_max.max(right_max))
+            },
+        );
+    for (index, count) in internal_pairs.into_iter().enumerate() {
+        bins[index] += count;
+        if count > 0 {
+            max_distance = max_distance.max(index as u32 + 1);
+        }
+    }
     MergedHistogram {
         histogram: bins.into_iter().map(|v| v as u32).collect(),
         max_distance,
