@@ -14,6 +14,8 @@
 npm install @xingwangzhe/bfs-rs
 ```
 
+主包只包含 ESM 加载器和类型声明。CI 将各平台原生二进制发布为独立的作用域子包，npm 只安装当前平台对应的可选依赖。
+
 ## 数据格式
 
 使用 **CSR（Compressed Sparse Row）**：

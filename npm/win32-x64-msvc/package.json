@@ -1,0 +1,35 @@
+{
+  "name": "@xingwangzhe/bfs-rs-win32-x64-msvc",
+  "version": "0.3.2",
+  "cpu": [
+    "x64"
+  ],
+  "main": "bfs-rs.win32-x64-msvc.node",
+  "files": [
+    "bfs-rs.win32-x64-msvc.node"
+  ],
+  "description": "Rust BFS on compressed adjacency list with Rayon parallelism",
+  "keywords": [
+    "bfs",
+    "graph",
+    "napi-rs",
+    "rayon",
+    "rust"
+  ],
+  "author": "xingwangzhe",
+  "license": "MIT",
+  "engines": {
+    "node": ">= 18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xingwangzhe/bfs-rs.git"
+  },
+  "os": [
+    "win32"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

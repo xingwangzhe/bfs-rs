@@ -1,0 +1,38 @@
+{
+  "name": "@xingwangzhe/bfs-rs-linux-x64-gnu",
+  "version": "0.3.2",
+  "cpu": [
+    "x64"
+  ],
+  "main": "bfs-rs.linux-x64-gnu.node",
+  "files": [
+    "bfs-rs.linux-x64-gnu.node"
+  ],
+  "description": "Rust BFS on compressed adjacency list with Rayon parallelism",
+  "keywords": [
+    "bfs",
+    "graph",
+    "napi-rs",
+    "rayon",
+    "rust"
+  ],
+  "author": "xingwangzhe",
+  "license": "MIT",
+  "engines": {
+    "node": ">= 18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xingwangzhe/bfs-rs.git"
+  },
+  "os": [
+    "linux"
+  ],
+  "libc": [
+    "glibc"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

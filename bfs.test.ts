@@ -1,14 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { bfsOne, bfsBatch, bfsAll, bfsPath, createBfsGraph } from "./index.js";
-import { createRequire } from "node:module";
-const require = createRequire(import.meta.url);
-const {
+import {
   bfsOneHistogram,
   bfsBatchHistogram,
   bfsAllHistogram,
   bfsMergedHistogram,
-} = require("./index.js");
+} from "./index.js";
 
 const adj = [1, 2, 0, 2, 0, 1, 3, 2];
 const offsets = [0, 2, 4, 7, 8];

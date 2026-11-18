@@ -14,6 +14,8 @@ Fast, exact BFS (Breadth-First Search) for large-scale graphs, written in Rust w
 npm install @xingwangzhe/bfs-rs
 ```
 
+The root package contains only the ESM loader and types. CI publishes each native binary as a scoped platform package, and npm installs only the matching optional dependency.
+
 ## Data Format
 
 Uses **CSR (Compressed Sparse Row)**:

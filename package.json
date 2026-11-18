@@ -1,6 +1,6 @@
 {
   "name": "@xingwangzhe/bfs-rs",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Rust BFS on compressed adjacency list with Rayon parallelism",
   "keywords": [
     "bfs",
@@ -10,6 +10,7 @@
     "rust"
   ],
   "license": "MIT",
+  "type": "module",
   "author": "xingwangzhe",
   "repository": {
     "type": "git",
@@ -17,26 +18,27 @@
   },
   "files": [
     "index.d.ts",
-    "index.js",
-    "bfs-rs.*.node"
+    "index.js"
   ],
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
-    "build": "napi build --platform --release",
-    "test": "node --test bfs.test.mjs",
-    "benchmark": "node benchmark.mjs",
+    "build": "napi build --platform --release --esm --js index.js --dts index.d.ts",
+    "test": "node --experimental-strip-types --test bfs.test.ts",
+    "benchmark": "bun run benchmark.ts",
     "lint": "oxlint",
     "artifacts": "napi artifacts",
-    "build:pgo": "node scripts/build-pgo.mjs",
-    "benchmark:pgo": "node scripts/build-pgo.mjs --compare"
+    "build:pgo": "bun run scripts/build-pgo.ts",
+    "benchmark:pgo": "bun run scripts/build-pgo.ts --compare",
+    "prepublishOnly": "napi pre-publish --npm-dir npm --tag-style npm --no-gh-release"
   },
   "devDependencies": {
     "@napi-rs/cli": "^3.10.12",
     "@oxc-node/core": "^0.1.7",
     "ava": "^8.4.0",
     "oxlint": "^1.94.0",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "@types/node": "^26.6.6"
   },
   "overrides": {
     "brace-expansion": "^5.0.9",
@@ -55,5 +57,20 @@
   },
   "engines": {
     "node": ">= 18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "workspaces": [
+    "npm/*"
+  ],
+  "optionalDependencies": {
+    "@xingwangzhe/bfs-rs-linux-x64-gnu": "workspace:*",
+    "@xingwangzhe/bfs-rs-win32-x64-msvc": "workspace:*",
+    "@xingwangzhe/bfs-rs-linux-x64-musl": "workspace:*",
+    "@xingwangzhe/bfs-rs-linux-arm64-gnu": "workspace:*",
+    "@xingwangzhe/bfs-rs-darwin-arm64": "workspace:*",
+    "@xingwangzhe/bfs-rs-darwin-x64": "workspace:*"
   }
 }

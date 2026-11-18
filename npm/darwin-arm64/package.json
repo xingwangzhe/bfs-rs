@@ -1,0 +1,35 @@
+{
+  "name": "@xingwangzhe/bfs-rs-darwin-arm64",
+  "version": "0.3.2",
+  "cpu": [
+    "arm64"
+  ],
+  "main": "bfs-rs.darwin-arm64.node",
+  "files": [
+    "bfs-rs.darwin-arm64.node"
+  ],
+  "description": "Rust BFS on compressed adjacency list with Rayon parallelism",
+  "keywords": [
+    "bfs",
+    "graph",
+    "napi-rs",
+    "rayon",
+    "rust"
+  ],
+  "author": "xingwangzhe",
+  "license": "MIT",
+  "engines": {
+    "node": ">= 18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xingwangzhe/bfs-rs.git"
+  },
+  "os": [
+    "darwin"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

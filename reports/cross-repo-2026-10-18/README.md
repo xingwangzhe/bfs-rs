@@ -54,7 +54,7 @@ internal arcs; and unused CSR trailing storage. Strict all-target Clippy and
 Rust formatting also pass. The six-platform CI and Trusted Publishing flow
 remain required before publishing; local testing covers Linux x64 GNU.
 
-`scripts/cross-repo-benchmark.mjs` measures a native addon against an exported
+`scripts/cross-repo-benchmark.ts` measures a native addon against an exported
 fixture. `BFS_BENCH_REPS` controls measured samples, `BFS_BENCH_WARMUPS` controls
 discarded warmup calls. The isolated crate control's complete source, manifest,
 and lockfile are in `crate-control/`; its dependencies are not production

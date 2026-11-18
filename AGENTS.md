@@ -8,9 +8,9 @@ The graph engine uses CSR plus its transpose, epoch visit markers, bitmap fronti
 
 ## Development and performance
 
-Use Bun for JavaScript dependencies and scripts, and Cargo for Rust. Preserve CommonJS semantics in `index.js`; do not add `type: module` without changing the generated loader.
+Use Bun for TypeScript scripts and dependencies, and Cargo for Rust. The generated `index.js` loader is ESM and the package sets `type: module`; keep the native loader and tests on that ESM contract.
 
-The release profile uses O3, fat LTO, one code-generation unit, and no incremental compilation. `bun run build:pgo` performs profile generation, workload training, LLVM profile merging, and final profile-use compilation. Use toolchain-matched `llvm-tools-preview`, a matching native runner, and the deterministic corpus in `scripts/pgo-workload.mjs`. Linux musl training uses an Alpine Node container. See `scripts/PERFORMANCE.md`.
+The release profile uses O3, fat LTO, one code-generation unit, and no incremental compilation. `bun run build:pgo` performs profile generation, workload training, LLVM profile merging, and final profile-use compilation. Use toolchain-matched `llvm-tools-preview`, a matching native runner, and the deterministic corpus in `scripts/pgo-workload.ts`. Linux musl training uses an Alpine Node container. See `scripts/PERFORMANCE.md`.
 
 `bun run benchmark:pgo` compares unprofiled and PGO release builds on holdout inputs. Retain raw measurements and distinguish runtime measurements from compilation time. Never publish host-specific `target-cpu=native` builds under the existing generic target names.
 
