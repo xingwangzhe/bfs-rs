@@ -124,7 +124,7 @@ use independent BFSs. The merged histogram retains at least 128 bins and grows
 when a shortest path exceeds 128 edges.
 
 Runtime depends on graph structure and CPU topology. See
-[performance methodology and reproducible consumer-fixture benchmarks](scripts/PERFORMANCE.md)
+[performance methodology and reproducible consumer-fixture benchmarks](docs/performance.md)
 for algorithm details, fallbacks, source references, memory measurement, and PGO
 selection. No host-specific CPU instruction flags are needed.
 
@@ -164,4 +164,4 @@ MIT
 
 ## Runtime-focused release builds
 
-Native CI artifacts use full LTO, one code-generation unit, and O3, while preserving the existing CPU instruction baseline. CI trains a profile-guided optimization (PGO) candidate using representative graph workloads and publishes it only when the runtime comparison passes; otherwise it publishes the unprofiled release. `bun run build:pgo` produces the optimized addon; `bun run benchmark:pgo` compares it with an unprofiled release. Install `llvm-tools-preview` with the same Rust toolchain first. Details and measurement limits: [scripts/PERFORMANCE.md](scripts/PERFORMANCE.md).
+Native CI artifacts use full LTO, one code-generation unit, and O3, while preserving the existing CPU instruction baseline. CI trains a profile-guided optimization (PGO) candidate using representative graph workloads and publishes it only when the runtime comparison passes; otherwise it publishes the unprofiled release. `bun run build:pgo` produces the optimized addon; `bun run benchmark:pgo` compares it with an unprofiled release. Install `llvm-tools-preview` with the same Rust toolchain first. Details and measurement limits: [performance guide](docs/performance.md).

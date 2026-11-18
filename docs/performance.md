@@ -76,7 +76,7 @@ engine rather than introducing a new graph representation dependency.
 For a cross-repository fixture exported by the consuming application:
 
 ```sh
-RAYON_NUM_THREADS=16 BFS_BENCH_REPS=3 bun scripts/cross-repo-benchmark.ts \
+RAYON_NUM_THREADS=16 BFS_BENCH_REPS=3 bun benchmark/cross-repo.ts \
   ./bfs-rs.linux-x64-gnu.node /path/to/fixture.json /path/to/result.json
 ```
 

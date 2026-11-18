@@ -8,7 +8,7 @@ import { performance } from "node:perf_hooks";
 const [bindingPath, fixturePath, outputPath] = process.argv.slice(2);
 if (!bindingPath || !fixturePath) {
   throw new Error(
-    "Usage: bun scripts/cross-repo-benchmark.ts <binding.node> <fixture.json> [output.json]",
+    "Usage: bun benchmark/cross-repo.ts <binding.node> <fixture.json> [output.json]",
   );
 }
 const native = createRequire(import.meta.url)(resolve(bindingPath));
