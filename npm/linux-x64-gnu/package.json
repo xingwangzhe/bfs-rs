@@ -8,7 +8,7 @@
   "files": [
     "bfs-rs.linux-x64-gnu.node"
   ],
-  "description": "Rust BFS on compressed adjacency list with Rayon parallelism",
+  "description": "Fast Rust-powered breadth-first search (BFS) for large graphs with Rayon. Installs only the native binary for your platform.",
   "keywords": [
     "bfs",
     "graph",

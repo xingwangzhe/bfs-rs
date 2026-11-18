@@ -106,4 +106,5 @@ for (const shape of ["sparse", "dense", "skewed", "path"]) {
   });
 }
 if (!Number.isFinite(sink)) throw new Error("Non-finite workload output");
+if (training) native.flushPgoProfile();
 console.log(JSON.stringify(results));

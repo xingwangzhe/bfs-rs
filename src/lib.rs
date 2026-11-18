@@ -802,3 +802,20 @@ pub fn bfs_merged_histogram(adj: Vec<u32>, offsets: Vec<u32>, n: u32) -> MergedH
     let graph = Graph::new(adj, offsets, n as usize).expect("invalid CSR graph");
     merged_histogram_internal(&graph)
 }
+
+#[cfg(feature = "pgo")]
+#[napi]
+pub fn flush_pgo_profile() -> Result<()> {
+    unsafe extern "C" {
+        fn __llvm_profile_write_file() -> i32;
+    }
+    let status = unsafe { __llvm_profile_write_file() };
+    if status == 0 {
+        Ok(())
+    } else {
+        Err(Error::new(
+            Status::GenericFailure,
+            "LLVM profile flush failed",
+        ))
+    }
+}
