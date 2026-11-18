@@ -1,6 +1,6 @@
 {
   "name": "@xingwangzhe/bfs-rs",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Rust BFS on compressed adjacency list with Rayon parallelism",
   "keywords": [
     "bfs",
@@ -32,10 +32,10 @@
     "benchmark:pgo": "node scripts/build-pgo.mjs --compare"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^3.10.8",
+    "@napi-rs/cli": "^3.10.12",
     "@oxc-node/core": "^0.1.7",
-    "ava": "^8.0.2",
-    "oxlint": "^1.88.0",
+    "ava": "^8.4.0",
+    "oxlint": "^1.94.0",
     "typescript": "~6.0.3"
   },
   "overrides": {
